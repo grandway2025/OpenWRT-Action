@@ -215,7 +215,7 @@ curl -s $mirroropenwrt/patch/other/691-net-ipv6-fix-UDPv6-GSO-segmentation-with-
 
 # Docker
 rm -rf feeds/luci/applications/luci-app-dockerman
-git clone https://github.com/grandway2025/luci-app-dockerman -b openwrt-24.10 feeds/luci/applications/luci-app-dockerman
+git clone https://github.com/grandway2025/luci-app-dockerman feeds/luci/applications/luci-app-dockerman
     rm -rf feeds/packages/utils/{docker,dockerd,containerd,runc}
     git clone https://github.com/grandway2025/packages_utils_docker feeds/packages/utils/docker
     git clone https://github.com/grandway2025/packages_utils_dockerd feeds/packages/utils/dockerd
@@ -236,8 +236,8 @@ sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/ut
 
 # UPnP
 rm -rf feeds/{packages/net/miniupnpd,luci/applications/luci-app-upnp}
-git clone https://github.com/grandway2025/miniupnpd feeds/packages/net/miniupnpd -b v2.3.7
-git clone https://github.com/grandway2025/luci-app-upnp feeds/luci/applications/luci-app-upnp -b master
+git clone https://github.com/grandway2025/miniupnpd feeds/packages/net/miniupnpd
+git clone https://github.com/grandway2025/luci-app-upnp feeds/luci/applications/luci-app-upnp
 
 # profile
 sed -i 's#\\u@\\h:\\w\\\$#\\[\\e[32;1m\\][\\u@\\h\\[\\e[0m\\] \\[\\033[01;34m\\]\\W\\[\\033[00m\\]\\[\\e[32;1m\\]]\\[\\e[0m\\]\\\$#g' package/base-files/files/etc/profile
@@ -285,7 +285,7 @@ sed -i "/BUILD_ID/aBUILD_DATE=\"$CURRENT_DATE\"" package/base-files/files/usr/li
 
 # golang 1.24
 rm -rf feeds/packages/lang/golang
-git clone --depth=1 -b 24.x https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
+git clone --depth=1 -b 24.x https://$github/sbwml/packages_lang_golang feeds/packages/lang/golang
 
 # luci-app-webdav
 git clone https://$github/sbwml/luci-app-webdav package/new/luci-app-webdav
@@ -383,7 +383,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/root/usr/
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/luci-static/resources/view/nlbw/config.js
 
 # mentohust
-git clone https://github.com/sbwml/luci-app-mentohust package/new/mentohust
+git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust
 
 # argon
 git clone https://github.com/jerrykuku/luci-theme-argon.git package/new/luci-theme-argon
