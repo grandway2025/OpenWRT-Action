@@ -356,7 +356,7 @@ sed -i 's/syslog/none/g' feeds/packages/admin/netdata/files/netdata.conf
 
 # Mosdns
 git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns
-git clone https://$github/sbwml/v2ray-geodata package/new/v2ray-geodata
+# git clone https://$github/sbwml/v2ray-geodata package/new/v2ray-geodata
 
 # OpenAppFilter
 git clone https://github.com/grandway2025/OpenAppFilter package/new/OpenAppFilter
