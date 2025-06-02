@@ -188,7 +188,7 @@ jobs:
         path: ${{ env.OPENWRT_PATH }}/bin
 
     - name: Online X86_64 updates
-      if: ${{ github.event.inputs.device == 'x86_64' }}
+      if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH
         mkdir -p ota
