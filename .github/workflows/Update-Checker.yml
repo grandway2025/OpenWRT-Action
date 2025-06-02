@@ -31,30 +31,9 @@ jobs:
       run: |
         echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash
 
-    - name: Trigger build for x86_64
+    - name: Trigger build
       if: steps.cacheHash.outputs.cache-hit != 'true'
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ github.token }}
-        event-type: ♻️ Update OpenWrt X86_64
-        client-payload: |
-          {
-            "device": "x86_64"
-          }
-
-    - name: Trigger build for rockchip
-      if: steps.cacheHash.outputs.cache-hit != 'true'
-      uses: peter-evans/repository-dispatch@v2
-      with:
-        token: ${{ github.token }}
-        event-type: ♻️ Update OpenWrt Rockchip
-        client-payload: |
-          {
-            "device": "rockchip"
-          }
-
-    - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        retain_days: 0
-        keep_minimum_runs: 2
+        event-type: ♻️ Update Firmware
