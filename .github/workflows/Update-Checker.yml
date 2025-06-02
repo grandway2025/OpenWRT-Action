@@ -16,7 +16,7 @@ jobs:
       run: |
         export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
         export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
-        git clone https://$github/grandway2025/openwrt_helloworld
+        git clone https://github.com/grandway2025/openwrt_helloworld
         echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
     - name: Compare Commit Hash
