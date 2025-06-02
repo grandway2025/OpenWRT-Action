@@ -1,0 +1,60 @@
+name: 🔄 Update Checker
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 */18 * * *
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+
+    steps:
+
+    - name: Get Commit Hash
+      id: getHash
+      run: |
+        export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
+        export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
+        git clone https://$github/grandway2025/openwrt_helloworld
+        echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Compare Commit Hash
+      id: cacheHash
+      uses: actions/cache@v3
+      with:
+        path: .commitHash
+        key: commitHash_${{ steps.getHash.outputs.commitHash }}
+
+    - name: Save New Commit Hash
+      if: steps.cacheHash.outputs.cache-hit != 'true'
+      run: |
+        echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash
+
+    - name: Trigger build for x86_64
+      if: steps.cacheHash.outputs.cache-hit != 'true'
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ github.token }}
+        event-type: ♻️ Update OpenWrt X86_64
+        client-payload: |
+          {
+            "device": "x86_64"
+          }
+
+    - name: Trigger build for rockchip
+      if: steps.cacheHash.outputs.cache-hit != 'true'
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ github.token }}
+        event-type: ♻️ Update OpenWrt Rockchip
+        client-payload: |
+          {
+            "device": "rockchip"
+          }
+
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        retain_days: 0
+        keep_minimum_runs: 2
