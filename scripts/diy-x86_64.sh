@@ -277,7 +277,7 @@ sed -i 's/3.openwrt.pool.ntp.org/time2.cloud.tencent.com/g' package/base-files/f
 
 # 加入作者信息
 sed -i "s/DISTRIB_DESCRIPTION='*.*'/DISTRIB_DESCRIPTION='OpenWrt-$(date +%Y%m%d)'/g"  package/base-files/files/etc/openwrt_release
-sed -i "s/DISTRIB_REVISION='*.*'/DISTRIB_REVISION=' By GRANDWAY2025'/g" package/base-files/files/etc/openwrt_release
+sed -i "s/DISTRIB_REVISION='*.*'/DISTRIB_REVISION=' By grandway2025'/g" package/base-files/files/etc/openwrt_release
 
 # CURRENT_DATE
 sed -i "/BUILD_DATE/d" package/base-files/files/usr/lib/os-release
@@ -362,6 +362,10 @@ git clone https://$github/grandway2025/OpenAppFilter package/new/OpenAppFilter
 
 # adguardhome
 git clone https://$github/grandway2025/luci-app-adguardhome package/new/luci-app-adguardhome
+mkdir -p files/usr/bin
+AGH_CORE=$(curl -sL https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep /AdGuardHome_linux_${1} | awk -F '"' '{print $4}')
+wget -qO- $AGH_CORE | tar xOvz > files/usr/bin/AdGuardHome
+chmod +x files/usr/bin/AdGuardHome
 
 # openclash
 mkdir -p files/etc/openclash/core
