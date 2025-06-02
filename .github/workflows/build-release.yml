@@ -207,7 +207,7 @@ jobs:
         EOF
 
     - name: Online Rockchip updates
-      if: ${{ github.event.inputs.device == 'rockchip' }}
+      if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH
         mkdir -p ota
