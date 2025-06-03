@@ -147,8 +147,6 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
-        # export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
-        # export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
         export LAN=${{ github.event.inputs.lan_addr }}
         [ ${{ github.event.inputs.ccache }} = 'true' ]
         [ -e files ] && mv files $OPENWRT_PATH/files
