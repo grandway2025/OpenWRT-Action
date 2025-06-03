@@ -7,7 +7,7 @@
 export mirror=https://script.kejizero.online
 
 # 私有Gitea
-export gitea=git.kejizero.online/zhao
+# export gitea=git.kejizero.online/zhao
 
 # GitHub镜像
 export github="github.com"
