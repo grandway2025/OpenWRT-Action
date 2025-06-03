@@ -50,7 +50,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: ${{ github.event.inputs.device }}-OpenWrt
+  FIRMWARE_TAG: ${{ github.event.inputs.device }}
   TZ: Asia/Shanghai
   
 jobs:
@@ -401,7 +401,7 @@ jobs:
       with:
         name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
         allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
+        tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
