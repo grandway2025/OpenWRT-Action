@@ -1,4 +1,4 @@
-name: 🔄 检查更新
+name: 🔄 Update-Checker
 
 on:
   workflow_dispatch:
@@ -14,9 +14,7 @@ jobs:
     - name: Get Commit Hash
       id: getHash
       run: |
-        export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
-        export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
-        git clone --depth 1 https://$GITEA_USERTNAME:$GITEA_PASSWORD@git.kejizero.online/zhao/openwrt_helloworld -b openwrt-24.10 .
+        git clone --depth 1 https://github.com/grandway2025/openwrt_helloworld
         echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
     - name: Compare Commit Hash
@@ -36,4 +34,4 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ github.token }}
-        event-type: ♻️ 固件更新
+        event-type: ♻️ Update Firmware
