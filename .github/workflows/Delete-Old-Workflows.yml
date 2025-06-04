@@ -1,4 +1,4 @@
-name: 🗑️ 删除旧的工作流
+name: 🗑️ Delete-Old-Workflows
 
 on:
   workflow_dispatch:
