@@ -15,6 +15,12 @@ on:
     # - cron: 0 17 * * *
   # watch:
   #   types: started
+     inputs:
+      lan_addr:
+        description: 'Setting default LAN address'
+        required: true
+        default: '192.168.1.10'
+        type: string 
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -96,6 +102,8 @@ jobs:
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
         DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
+        echo "latest_release=${latest_release}" >>$GITHUB_ENV
 
     - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
@@ -113,8 +121,6 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
-        export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
-        export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $DIY_SCRIPT
@@ -133,9 +139,12 @@ jobs:
         cd $OPENWRT_PATH
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
+        sed -n 's/.*lan) ipad=${ipaddr:-"\([0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\)"} ;;.*/\1/p' package/base-files/files/bin/config_generate | head -n 1 > IP_ADDR
+        [ -s IP_ADDR ] && echo "IP_ADDR=$(cat IP_ADDR)" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+        echo "FILE_DATE=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
+        echo "TAG_TIME=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
         
     - name: Check Space Usage
       if: (!cancelled())
@@ -153,15 +162,15 @@ jobs:
       run: |
         cd $OPENWRT_PATH
         mkdir -p ota
-        OTA_URL="https://github.com/zhiern/OpenWRT/releases/download"
-        SHA256=$(sha256sum bin/targets/x86/64*/zerowrt-vip-plus-x86-64-generic-squashfs-combined-efi.img.gz | awk '{print $1}')
+        OTA_URL="https://github.com/grandway2025/Actions-OpenWrt/releases/download"
+        SHA256=$(sha256sum bin/targets/x86/64*/OpenWrt-vip-plus-x86-64-generic-squashfs-combined-efi.img.gz | awk '{print $1}')
         cat > ota/x86.json <<EOF
         {
           "x86_64": [
             {
               "build_date": "$CURRENT_DATE",
               "sha256sum": "$SHA256",
-              "url": "https://clone.kejizero.online/$OTA_URL/X86_64/zerowrt-vip-plus-x86-64-generic-squashfs-combined-efi.img.gz"
+              "url": "$OTA_URL/x86_64-OpenWrt-${{ env.latest_release }}/OpenWrt-vip-plus-x86-64-generic-squashfs-combined-efi.img.gz"
             }
           ]
         }
@@ -191,9 +200,9 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1.14.0
       with:
-        name: ${{ env.FIRMWARE_TAG }}
+        name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
         allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}
+        tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
@@ -203,11 +212,7 @@ jobs:
           - ⚽ 固件源码: ${{ env.REPO_URL }}
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
           - 🚀 内核版本: ${{ env.KERNEL }}
-          - 🌐 默认地址: 10.0.0.1
+          - 🌐 默认地址: ${{ env.IP_ADDR }}
           - 🔑 默认密码: password
           ### 🧊 固件版本
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-          - ${{ env.COMMIT_AUTHOR }}
-          - ${{ env.COMMIT_DATE }}
-          - ${{ env.COMMIT_MESSAGE }}
-          - ${{ env.COMMIT_HASH }}
