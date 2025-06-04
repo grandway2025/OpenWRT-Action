@@ -1,9 +1,9 @@
-name: 🗑️ Delete-Old-Workflows
+name: 🗑️ 删除旧的工作流
 
 on:
   workflow_dispatch:
-#  schedule:
-#    - cron: 0 3 * * *
+  schedule:
+    - cron: 0 3 * * *
 
 jobs:
   Cleaning:
@@ -14,7 +14,7 @@ jobs:
       uses: Mattraks/delete-workflow-runs@main
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        retain_days: 3
+        retain_days: 1
         keep_minimum_runs: 0
 
     - name: Delete Old Releases
