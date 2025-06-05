@@ -174,7 +174,7 @@ curl -s $mirror/openwrt/patch/firewall4/nftables/0003-drop-rej-file.patch > pack
 git clone https://$github/grandway2025/nft-fullcone package/new/nft-fullcone
 
 # IPv6 NAT
-git clone https://github.com/sbwml/package_new_nat6 package/new/nat6
+git clone https://$github/grandway2025/package_new_nat6 package/new/nat6
 
 # natflow
 git clone https://$github/grandway2025/package_new_natflow package/new/natflow
@@ -390,10 +390,10 @@ git clone https://github.com/jerrykuku/luci-app-argon-config.git package/new/luc
 sed -i "s/bing/none/g" package/new/luci-app-argon-config/root/etc/config/argon
 
 # 主题设置
-sed -i 's#<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by <%= ver.luciname %> (<%= ver.luciversion %>)</a> /#<a class="luci-link" href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">OpenWRT定制版</a> /#' package/new/luci-theme-argon/luasrc/view/themes/argon/footer.htm
-# sed -i 's|<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme <%# vPKG_VERSION %></a>|<a href="https://github.com/zhiern/OpenWRT" target="_blank">OpenWRT</a> |g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer.htm
-sed -i 's#<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by <%= ver.luciname %> (<%= ver.luciversion %>)</a> /#<a class="luci-link" href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">OpenWRT定制版</a> /#' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
-# sed -i 's|<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme <%# vPKG_VERSION %></a>|<a href="https://github.com/zhiern/OpenWRT" target="_blank">OpenWRT</a> |g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
+sed -i 's#<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by <%= ver.luciname %> (<%= ver.luciversion %>)</a> /#<a class="luci-link" href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">Openwrt定制版</a> /#' package/new/luci-theme-argon/luasrc/view/themes/argon/footer.htm
+sed -i 's|<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme <%# vPKG_VERSION %></a>|<a href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">OpenWRT</a> |g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer.htm
+sed -i 's#<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by <%= ver.luciname %> (<%= ver.luciversion %>)</a> /#<a class="luci-link" href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">Openwrt定制版</a> /#' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
+sed -i 's|<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme <%# vPKG_VERSION %></a>|<a href="https://github.com/grandway2025/OpenWRT-Action" target="_blank">OpenWRT</a> |g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
 
 # lucky
 git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky
