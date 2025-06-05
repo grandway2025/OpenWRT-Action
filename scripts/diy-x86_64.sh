@@ -174,7 +174,7 @@ curl -s $mirror/openwrt/patch/firewall4/nftables/0003-drop-rej-file.patch > pack
 git clone https://$github/grandway2025/nft-fullcone package/new/nft-fullcone
 
 # IPv6 NAT
-git clone https://$github/grandway2025/package_new_nat6 package/new/nat6
+git clone https://github.com/sbwml/package_new_nat6 package/new/nat6
 
 # natflow
 git clone https://$github/grandway2025/package_new_natflow package/new/natflow
