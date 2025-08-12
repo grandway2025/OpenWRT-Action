@@ -439,6 +439,12 @@ src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.
 src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/telephony
 EOF
 
+fix_rust_compile_error() {
+    if [ -f "$OPENWRT_PATH/feeds/packages/lang/rust/Makefile" ]; then
+        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' "$OPENWRT_PATH/feeds/packages/lang/rust/Makefile"
+    fi
+}
+
 # Vermagic
 # curl -s https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-24.10.1-x86-64.manifest \
 # | grep "^kernel -" \
