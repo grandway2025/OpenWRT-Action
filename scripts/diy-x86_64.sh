@@ -280,8 +280,8 @@ rm -rf feeds/packages/lang/golang
 git clone https://$gitea/packages_lang_golang -b 25.x feeds/packages/lang/golang
 
 # rust
-rm -rf feeds/packages/lang/rust
-git clone https://$github/zhiern/packages_lang_rust -b 1.85.0 feeds/packages/lang/rust
+# rm -rf feeds/packages/lang/rust
+# git clone https://$github/zhiern/packages_lang_rust -b 1.85.0 feeds/packages/lang/rust
 
 # luci-app-webdav
 git clone https://$github/sbwml/luci-app-webdav package/new/luci-app-webdav
@@ -439,9 +439,10 @@ src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.
 src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/telephony
 EOF
 
+# fix_rust_compile_error && Set Rust build arg llvm.download-ci-llvm to false.
 fix_rust_compile_error() {
-    if [ -f "$OPENWRT_PATH/feeds/packages/lang/rust/Makefile" ]; then
-        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' "$OPENWRT_PATH/feeds/packages/lang/rust/Makefile"
+    if [ -f "feeds/packages/lang/rust/Makefile" ]; then
+        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' "feeds/packages/lang/rust/Makefile"
     fi
 }
 
