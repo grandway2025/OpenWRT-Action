@@ -342,7 +342,7 @@ git clone -b v5 https://github.com/sbwml/openwrt_helloworld package/new/hellowor
 
 # alist
 rm -rf feeds/packages/net/alist feeds/luci/applications/luci-app-alist
-git clone https://$github/sbwml/openwrt-alist package/new/alist
+# git clone https://$github/sbwml/openwrt-alist package/new/alist
 
 # openlist
 git clone https://$github/sbwml/luci-app-openlist package/new/openlist
@@ -380,11 +380,11 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/lu
 git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust
 
 # argon
-git clone https://$github/jerrykuku/luci-theme-argon.git package/new/luci-theme-argon
-curl -s $mirror/Customize/argon/bg1.jpg > package/new/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+git clone https://$github/zhiern/luci-theme-argon.git package/new/luci-theme-argon
+# curl -s $mirror/Customize/argon/bg1.jpg > package/new/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
 
 # argon-config
-git clone https://$github/jerrykuku/luci-app-argon-config.git package/new/luci-app-argon-config
+git clone https://$github/zhiern/luci-app-argon-config.git package/new/luci-app-argon-config
 sed -i "s/bing/none/g" package/new/luci-app-argon-config/root/etc/config/argon
 
 # 主题设置
