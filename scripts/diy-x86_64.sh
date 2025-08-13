@@ -440,11 +440,13 @@ src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/2
 EOF
 
 # fix_rust_compile_error && Set Rust build arg llvm.download-ci-llvm to false.
-fix_rust_compile_error() {
-    if [ -f "feeds/packages/lang/rust/Makefile" ]; then
-        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' "feeds/packages/lang/rust/Makefile"
-    fi
-}
+RUST_MAKEFILE="feeds/packages/lang/rust/Makefile"
+if [[ -f "${RUST_MAKEFILE}" ]]; then
+  printf "Modifying %s...\n" "${RUST_MAKEFILE}"
+  sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' "${RUST_MAKEFILE}"
+else
+  echo "File ${RUST_MAKEFILE} does not exist." >&2
+fi
 
 # Vermagic
 # curl -s https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-24.10.1-x86-64.manifest \
