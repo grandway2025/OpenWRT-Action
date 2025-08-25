@@ -18,6 +18,16 @@ export github="github.com"
 # 使用 O2 级别的优化
 sed -i 's/Os/O2/g' include/target.mk
 
+# 内核版本设置
+curl -s $mirror/doc/kernel-6.6 > include/kernel-6.6
+curl -s $mirror/doc/patch/kernel-6.6/kernel/0001-linux-module-video.patch > package/0001-linux-module-video.patch
+git apply package/0001-linux-module-video.patch
+rm -rf package/0001-linux-module-video.patch
+
+# kenrel Vermagic
+sed -ie 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' include/kernel-defaults.mk
+grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | md5sum | awk '{print $1}' > .vermagic
+
 # 移除 SNAPSHOT 标签
 sed -i 's,-SNAPSHOT,,g' include/version.mk
 sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
@@ -212,12 +222,13 @@ curl -s $mirror/doc/patch/kernel-6.6/igc-fix/996-intel-igc-i225-i226-disable-eee
 
 # Docker
 rm -rf feeds/luci/applications/luci-app-dockerman
-git clone https://$gitea/luci-app-dockerman -b openwrt-24.10 feeds/luci/applications/luci-app-dockerman
+git clone https://github.com/sirpdboy/luci-app-dockerman.git package/new/dockerman
+mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf package/new/dockerman
     rm -rf feeds/packages/utils/{docker,dockerd,containerd,runc}
-    git clone https://$gitea/packages_utils_docker feeds/packages/utils/docker
-    git clone https://$gitea/packages_utils_dockerd feeds/packages/utils/dockerd
-    git clone https://$gitea/packages_utils_containerd feeds/packages/utils/containerd
-    git clone https://$gitea/packages_utils_runc feeds/packages/utils/runc
+    git clone https://$github/sbwml/packages_utils_docker feeds/packages/utils/docker
+    git clone https://$github/sbwml/packages_utils_dockerd feeds/packages/utils/dockerd
+    git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd
+    git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc
 
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
@@ -277,14 +288,13 @@ sed -i "/BUILD_ID/aBUILD_DATE=\"$CURRENT_DATE\"" package/base-files/files/usr/li
 
 # golang 1.25
 rm -rf feeds/packages/lang/golang
-git clone https://$gitea/packages_lang_golang -b 25.x feeds/packages/lang/golang
-
-# rust
-# rm -rf feeds/packages/lang/rust
-# git clone https://$github/zhiern/packages_lang_rust -b 1.85.0 feeds/packages/lang/rust
+git clone https://$github/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
 
 # luci-app-webdav
 git clone https://$github/sbwml/luci-app-webdav package/new/luci-app-webdav
+
+# luci-app-quickfile
+git clone https://$github/sbwml/luci-app-quickfile package/new/quickfile
 
 # ddns - fix boot
 sed -i '/boot()/,+2d' feeds/packages/net/ddns-scripts/files/etc/init.d/ddns
@@ -337,15 +347,14 @@ git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages
 
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
-# git clone -b openwrt-24.10 https://git.kejizero.online/private/openwrt_helloworld package/new/helloworld
-git clone -b v5 https://github.com/sbwml/openwrt_helloworld package/new/helloworld
+git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld
 
 # alist
-rm -rf feeds/packages/net/alist feeds/luci/applications/luci-app-alist
-# git clone https://$github/sbwml/openwrt-alist package/new/alist
+# rm -rf feeds/packages/net/alist feeds/luci/applications/luci-app-alist
+# git clone https://$github/sbwml/luci-app-alist package/new/alist
 
 # openlist
-git clone https://$github/sbwml/luci-app-openlist package/new/openlist
+git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
 # luci-app-sqm
 rm -rf feeds/luci/applications/luci-app-sqm
@@ -367,7 +376,8 @@ git clone https://$github/destan19/OpenAppFilter package/new/OpenAppFilter
 git clone https://$gitea/luci-app-adguardhome package/new/luci-app-adguardhome
 
 # PowerOff 关机插件
-git clone https://github.com/WukongMaster/luci-app-poweroff.git package/new/luci-app-poweroff
+git clone https://github.com/sirpdboy/luci-app-poweroffdevice package/new/poweroff
+mv -n package/new/poweroff/luci-app-poweroffdevice package/new/luci-app-poweroffdevice && rm -rf package/new/poweroff
 
 # luci-app-taskplan
 git clone https://github.com/sirpdboy/luci-app-taskplan package/new/luci-app-taskplan
@@ -379,12 +389,15 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/lu
 # mentohust
 git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust
 
+# luci-app-filetransfer
+# rm -rf feeds/luci/applications/luci-app-filetransfer
+# git clone https://$github/grandway2025/luci-app-filetransfer.git package/new/luci-app-filetransfer
+
 # argon
-git clone https://$github/zhiern/luci-theme-argon.git package/new/luci-theme-argon
-# curl -s $mirror/Customize/argon/bg1.jpg > package/new/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+git clone https://$github/grandway2025/luci-theme-argon.git package/new/luci-theme-argon
 
 # argon-config
-git clone https://$github/zhiern/luci-app-argon-config.git package/new/luci-app-argon-config
+git clone https://$github/grandway2025/luci-app-argon-config.git package/new/luci-app-argon-config
 sed -i "s/bing/none/g" package/new/luci-app-argon-config/root/etc/config/argon
 
 # 主题设置
@@ -393,11 +406,23 @@ sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_b
 sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by <%= ver.luciname %> (<%= ver.luciversion %>)</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
 # sed -i 's|<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme <%# vPKG_VERSION %></a>|<a href="https://github.com/grandway2025/Actions-OpenWrt" target="_blank">OpenWRT</a> |g' package/new/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
 
+# luci-app-kucat-config
+# git clone https://$github/sirpdboy/luci-app-kucat-config.git package/new/luci-app-kucat-config
+
+# luci-app-advancedplus
+git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus
+
+# luci-theme-kucat
+git clone https://$github/sirpdboy/luci-theme-kucat.git package/new/kucat
+mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf package/new/kucat
+
 # lucky
 git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky
 
-# pkgs
-git clone https://$gitea/openwrt-package package/new/openwrt-package
+# custom packages pkgs
+rm -rf feeds/packages/utils/coremark
+git clone https://$github/sbwml/openwrt_pkgs package/new/custom --depth=1
+rm -rf package/new/custom/luci-app-adguardhome
 
 # autocore-arm
 git clone https://$gitea/autocore-arm package/new/autocore-arm
@@ -427,26 +452,20 @@ exit 0
 '> ./package/base-files/files/etc/rc.local
 
 # 默认设置
-git clone --depth=1 -b openwrt-24.10 https://$github/zhiern/default-settings package/new/default-settings
+git clone https://$github/grandway2025/default-settings package/new/default-settings -b openwrt-24.10
 
 # distfeeds.conf
 mkdir -p files/etc/opkg
 cat > files/etc/opkg/distfeeds.conf <<EOF
-src/gz openwrt_base https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/base
-src/gz openwrt_luci https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/luci
-src/gz openwrt_packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/packages
-src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/routing
-src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.1/packages/x86_64/telephony
+src/gz openwrt_base https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/base
+src/gz openwrt_luci https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/luci
+src/gz openwrt_packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/packages
+src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/routing
+src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/telephony
 EOF
 
-# fix_rust_compile_error && Set Rust build arg llvm.download-ci-llvm to false.
-RUST_MAKEFILE="feeds/packages/lang/rust/Makefile"
-if [[ -f "${RUST_MAKEFILE}" ]]; then
-  printf "Modifying %s...\n" "${RUST_MAKEFILE}"
-  sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' "${RUST_MAKEFILE}"
-else
-  echo "File ${RUST_MAKEFILE} does not exist." >&2
-fi
+# fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
+sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
 
 # Vermagic
 # curl -s https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-24.10.1-x86-64.manifest \
