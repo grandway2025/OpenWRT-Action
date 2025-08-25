@@ -20,7 +20,16 @@ on:
         description: 'Setting default LAN address'
         required: true
         default: '192.168.1.10'
-        type: string 
+        type: string
+      root_password:
+        description: '设置默认 root 密码（可选，默认password）'
+        required: false
+        default: 'password'
+        type: string
+      docker:
+        description: '启用 Docker 支持'
+        type: boolean
+        default: true  
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -134,6 +143,7 @@ jobs:
     - name: Load Custom Configuration
       run: |
        export LAN=${{ github.event.inputs.lan_addr }}
+        [ -n ${{ github.event.inputs.root_password }} ] && export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
