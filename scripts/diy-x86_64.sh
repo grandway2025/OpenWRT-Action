@@ -65,6 +65,15 @@ sed -i 's#20) \* 1000#60) \* 1000#g' feeds/luci/modules/luci-base/htdocs/luci-st
 # 修改默认ip
 sed -i "s/192.168.1.1/$LAN/g" package/base-files/files/bin/config_generate
 
+if [ -n "$ROOT_PASSWORD" ]; then
+    # sha256 encryption
+    default_password=$(openssl passwd -5 $ROOT_PASSWORD)
+    sed -i "s|^root:[^:]*:|root:${default_password}:|" package/base-files/files/etc/shadow
+fi
+
+# fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
+sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
+
 # 修改名称
 # sed -i 's/OpenWrt/ZeroWrt/' package/base-files/files/bin/config_generate
 
@@ -463,9 +472,6 @@ src/gz openwrt_packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24
 src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/routing
 src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/telephony
 EOF
-
-# fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
-sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
 
 # Vermagic
 # curl -s https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-24.10.1-x86-64.manifest \
