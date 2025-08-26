@@ -74,6 +74,10 @@ if [ -n "$ROOT_PASSWORD" ]; then
     sed -i "s|^root:[^:]*:|root:${default_password}:|" package/base-files/files/etc/shadow
 fi
 
+[ -n "$ROOT_PASSWORD" ] \
+    && echo -e "${GREEN_COLOR}Default Password:${RES} ${BLUE_COLOR}$ROOT_PASSWORD${RES}" \
+    || echo -e "${GREEN_COLOR}Default Password:${RES} (${YELLOW_COLOR}No password${RES})"
+
 # fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
 sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
 
