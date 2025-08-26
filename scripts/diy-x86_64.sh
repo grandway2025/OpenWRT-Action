@@ -239,6 +239,9 @@ mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf
     git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd
     git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc
 
+# docker
+[ "$ENABLE_DOCKER" = "y" ] && curl -s $mirror/configs/config-docker >> .config
+
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
 sed -i '3 a\\t\t"order": 50,' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
