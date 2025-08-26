@@ -144,6 +144,7 @@ jobs:
       run: |
        export LAN=${{ github.event.inputs.lan_addr }}
         [ -n ${{ github.event.inputs.root_password }} ] && export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
+        [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
