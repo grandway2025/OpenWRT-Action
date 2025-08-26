@@ -12,8 +12,7 @@ export gitea=git.kejizero.online/zhao
 # GitHub镜像
 export github="github.com"
 
-export \
-    ROOT_PASSWORD=$ROOT_PASSWORD
+export ROOT_PASSWORD=$ROOT_PASSWORD
 
 # 下载进度条
 # CURL_BAR="--progress-bar"
@@ -72,11 +71,6 @@ if [ -n "$ROOT_PASSWORD" ]; then
     # sha256 encryption
     default_password=$(openssl passwd -5 $ROOT_PASSWORD)
     sed -i "s|^root:[^:]*:|root:${default_password}:|" package/base-files/files/etc/shadow
-fi
-
-if [ -n "$ROOT_PASSWORD" ]; then
-    && echo -e "${GREEN_COLOR}Default Password:${RES} ${BLUE_COLOR}$ROOT_PASSWORD${RES}" \
-    || echo -e "${GREEN_COLOR}Default Password:${RES} (${YELLOW_COLOR}No password${RES})"
 fi
 
 # fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
