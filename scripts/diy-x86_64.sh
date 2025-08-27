@@ -34,7 +34,7 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 [ "$ENABLE_DOCKER" = "y" ] && curl -s $mirror/configs/config-docker >> .config
 
 # ShadowSocksR Plus
-[ "$ENABLE_SHADOWSOCKSR_PLUS" = "y" ] && curl -s $mirror/configs/config-ShadowSocksR Plus >> .config
+[ "$ENABLE_SSRP" = "y" ] && curl -s $mirror/configs/config-ssrp >> .config
 
 # passwall
 [ "$ENABLE_PASSWALL" = "y" ] && curl -s $mirror/configs/config-passwall >> .config
