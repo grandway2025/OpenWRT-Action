@@ -27,7 +27,15 @@ on:
         default: 'password'
         type: string
       docker:
-        description: '启用 Docker 支持'
+        description: '编绎 Docker '
+        type: boolean
+        default: true  
+      ShadowSocksR Plus:
+        description: '编绎 ShadowSocksR Plus '
+        type: boolean
+        default: true  
+      passwall:
+        description: '编绎 passwall '
         type: boolean
         default: true  
 
