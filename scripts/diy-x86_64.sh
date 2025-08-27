@@ -30,6 +30,15 @@ rm -rf package/0001-linux-module-video.patch
 sed -ie 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' include/kernel-defaults.mk
 grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | md5sum | awk '{print $1}' > .vermagic
 
+# docker
+[ "$ENABLE_DOCKER" = "y" ] && curl -s $mirror/configs/config-docker >> .config
+
+# ShadowSocksR Plus
+[ "$ENABLE_SHADOWSOCKSR_PLUS" = "y" ] && curl -s $mirror/configs/config-ssrp >> .config
+
+# passwall
+[ "$ENABLE_PASSWALL" = "y" ] && curl -s $mirror/configs/config-passwall >> .config
+
 # 移除 SNAPSHOT 标签
 sed -i 's,-SNAPSHOT,,g' include/version.mk
 sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
@@ -240,9 +249,6 @@ mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf
     git clone https://$github/sbwml/packages_utils_dockerd feeds/packages/utils/dockerd
     git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd
     git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc
-
-# docker
-[ "$ENABLE_DOCKER" = "y" ] && curl -s $mirror/configs/config-docker >> .config
 
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
