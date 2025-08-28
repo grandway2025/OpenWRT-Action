@@ -11,10 +11,6 @@ name: 💻 X86_64
 on:
   repository_dispatch:
   workflow_dispatch:
-  # schedule:
-    # - cron: 0 17 * * *
-  # watch:
-  #   types: started
      inputs:
       lan_addr:
         description: 'Setting default LAN address'
