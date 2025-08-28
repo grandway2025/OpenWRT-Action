@@ -12,8 +12,6 @@ export gitea=git.kejizero.online/zhao
 # GitHub镜像
 export github="github.com"
 
-export ROOT_PASSWORD=$ROOT_PASSWORD
-
 # 下载进度条
 # CURL_BAR="--progress-bar"
 
