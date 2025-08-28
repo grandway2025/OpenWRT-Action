@@ -43,6 +43,27 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 # openclash
 [ "$ENABLE_OPENCLASH" = "y" ] && curl -s $mirror/configs/config-openclash >> .config
 
+# AdGuard Home
+[ "$ENABLE_ADGUARDHOME" = "y" ] && curl -s $mirror/configs/config-adguardhome >> .config
+
+# Lucky
+[ "$ENABLE_LUCKY" = "y" ] && curl -s $mirror/configs/config-lucky >> .config
+
+# MosDNS
+[ "$ENABLE_MOSDNS" = "y" ] && curl -s $mirror/configs/config-mosdns >> .config
+
+# OpenAppFilter
+[ "$ENABLE_OAF" = "y" ] && curl -s $mirror/configs/config-oaf >> .config
+
+# OpenList
+[ "$ENABLE_OPENLIST" = "y" ] && curl -s $mirror/configs/config-openlist >> .config
+
+# 任务设置
+[ "$ENABLE_TASKPLAN" = "y" ] && curl -s $mirror/configs/config-taskplan >> .config
+
+# 高级设置
+[ "$ENABLE_ADVANCEDPLUS" = "y" ] && curl -s $mirror/configs/config-advancedplus >> .config
+
 # 移除 SNAPSHOT 标签
 sed -i 's,-SNAPSHOT,,g' include/version.mk
 sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
