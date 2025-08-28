@@ -54,27 +54,11 @@ on:
         description: '编绎 Lucky '
         type: boolean
         default: true  
-      mosdns:
-        description: '编绎 MosDNS '
-        type: boolean
-        default: true   
       oaf:
         description: '编绎 OpenAppFilter 应用过滤 '
         type: boolean
         default: true   
-      openlist:
-        description: '编绎 OpenList '
-        type: boolean
-        default: true     
-      taskplan:
-        description: '编绎 taskplan 任务设置 '
-        type: boolean
-        default: true  
-      advancedplus:
-        description: '编绎 Advanced Plus 高级设置 '
-        type: boolean
-        default: true          
-        
+               
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
@@ -196,11 +180,7 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.adguardhome }} = 'true' ] && export ENABLE_ADGUARDHOME=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
-        [ ${{ github.event.inputs.mosdns }} = 'true' ] && export ENABLE_MOSDNS=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
-        [ ${{ github.event.inputs.openlist }} = 'true' ] && export ENABLE_OPENLIST=y
-        [ ${{ github.event.inputs.taskplan }} = 'true' ] && export ENABLE_TASKPLAN=y
-        [ ${{ github.event.inputs.advancedplus }} = 'true' ] && export ENABLE_ADVANCEDPLUS=y
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
