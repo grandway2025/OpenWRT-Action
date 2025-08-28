@@ -73,9 +73,8 @@ on:
       advancedplus:
         description: '编绎 Advanced Plus 高级设置 '
         type: boolean
-        default: true   
+        default: true          
         
-
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
