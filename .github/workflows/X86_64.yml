@@ -37,7 +37,16 @@ on:
       passwall:
         description: '编绎 passwall '
         type: boolean
+        default: true 
+      nikki:
+        description: '编绎 Nikki '
+        type: boolean
+        default: true
+      openclash:
+        description: '编绎 OpenClash '
+        type: boolean
         default: true  
+        
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -150,10 +159,13 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
-       export ${{ github.event.inputs.build_options }} LAN=${{ github.event.inputs.lan_addr }} && ROOT_PASSWORD=${{ github.event.inputs.root_password }}
+       export ${{ github.event.inputs.build_options }} LAN=${{ github.event.inputs.lan_addr }} 
+        ${{ github.event.inputs.build_options }} ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
+        [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
+        [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
