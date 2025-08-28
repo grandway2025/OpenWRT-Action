@@ -38,14 +38,6 @@ on:
         description: '编绎 Nikki '
         type: boolean
         default: true
-      openclash:
-        description: '编绎 OpenClash '
-        type: boolean
-        default: true  
-      lucky:
-        description: '编绎 Lucky '
-        type: boolean
-        default: true  
       oaf:
         description: '编绎 OpenAppFilter 应用过滤 '
         type: boolean
