@@ -38,6 +38,14 @@ on:
         description: '编绎 Nikki '
         type: boolean
         default: true
+      openclash:
+        description: '编绎 OpenClash '
+        type: boolean
+        default: true  
+      adguardhome:
+        description: '编绎 AdGuard Home '
+        type: boolean
+        default: true          
       oaf:
         description: '编绎 OpenAppFilter 应用过滤 '
         type: boolean
