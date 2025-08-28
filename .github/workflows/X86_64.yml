@@ -46,6 +46,34 @@ on:
         description: '编绎 OpenClash '
         type: boolean
         default: true  
+      adguardhome:
+        description: '编绎 AdGuard Home '
+        type: boolean
+        default: true
+      lucky:
+        description: '编绎 Lucky '
+        type: boolean
+        default: true  
+      mosdns:
+        description: '编绎 MosDNS '
+        type: boolean
+        default: true   
+      oaf:
+        description: '编绎 OpenAppFilter 应用过滤 '
+        type: boolean
+        default: true   
+      openlist:
+        description: '编绎 OpenList '
+        type: boolean
+        default: true     
+      taskplan:
+        description: '编绎 taskplan 任务设置 '
+        type: boolean
+        default: true  
+      advancedplus:
+        description: '编绎 Advanced Plus 高级设置 '
+        type: boolean
+        default: true   
         
 
 env:
