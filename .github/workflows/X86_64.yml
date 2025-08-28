@@ -195,6 +195,13 @@ jobs:
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
         [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
+        [ ${{ github.event.inputs.adguardhome }} = 'true' ] && export ENABLE_ADGUARDHOME=y
+        [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
+        [ ${{ github.event.inputs.mosdns }} = 'true' ] && export ENABLE_MOSDNS=y
+        [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
+        [ ${{ github.event.inputs.openlist }} = 'true' ] && export ENABLE_OPENLIST=y
+        [ ${{ github.event.inputs.taskplan }} = 'true' ] && export ENABLE_TASKPLAN=y
+        [ ${{ github.event.inputs.advancedplus }} = 'true' ] && export ENABLE_ADVANCEDPLUS=y
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
