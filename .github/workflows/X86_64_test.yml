@@ -231,7 +231,7 @@ jobs:
       with:
         name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
         allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}
+        tag: ${{ env.FIRMWARE_TAG }}-OpenWrt
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
