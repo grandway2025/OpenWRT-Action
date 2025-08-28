@@ -54,6 +54,10 @@ on:
         description: '编绎 OpenAppFilter 应用过滤 '
         type: boolean
         default: true   
+      openlist:
+        description: '编绎 OpenList '
+        type: boolean
+        default: true  
                
 env:
   REPO_URL: https://github.com/openwrt/openwrt
