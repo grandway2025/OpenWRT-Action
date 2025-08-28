@@ -161,7 +161,7 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
-       export ${{ github.event.inputs.build_options }} LAN=${{ github.event.inputs.lan_addr }}
+       export ${{ github.event.inputs.build_options }}
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
