@@ -11,6 +11,10 @@ name: 💻 X86_64
 on:
   repository_dispatch:
   workflow_dispatch:
+  # schedule:
+    # - cron: 0 17 * * *
+  # watch:
+  #   types: started
      inputs:
       lan_addr:
         description: 'Setting default LAN address'
@@ -174,6 +178,7 @@ jobs:
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
         [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
+        [ ${{ github.event.inputs.adguardhome }} = 'true' ] && export ENABLE_ADGUARDHOME=y        
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         [ -e files ] && mv files $OPENWRT_PATH/files
