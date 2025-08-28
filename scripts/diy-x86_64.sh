@@ -80,6 +80,7 @@ sed -i 's#20) \* 1000#60) \* 1000#g' feeds/luci/modules/luci-base/htdocs/luci-st
 # 修改默认ip
 sed -i "s/192.168.1.1/$LAN/g" package/base-files/files/bin/config_generate
 
+# 为默认 root 密码进行设置
 if [ -n "$ROOT_PASSWORD" ]; then
     # sha256 encryption
     default_password=$(openssl passwd -5 $ROOT_PASSWORD)
