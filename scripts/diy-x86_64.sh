@@ -37,6 +37,12 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 # passwall
 [ "$ENABLE_PASSWALL" = "y" ] && curl -s $mirror/configs/config-passwall >> .config
 
+# nikki
+[ "$ENABLE_NIKKI" = "y" ] && curl -s $mirror/configs/config-nikki >> .config
+
+# openclash
+[ "$ENABLE_OPENCLASH" = "y" ] && curl -s $mirror/configs/config-openclash >> .config
+
 # 移除 SNAPSHOT 标签
 sed -i 's,-SNAPSHOT,,g' include/version.mk
 sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
