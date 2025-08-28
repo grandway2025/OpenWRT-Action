@@ -49,11 +49,11 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 # Lucky
 [ "$ENABLE_LUCKY" = "y" ] && curl -s $mirror/configs/config-lucky >> .config
 
-# MosDNS
-# [ "$ENABLE_MOSDNS" = "y" ] && curl -s $mirror/configs/config-mosdns >> .config
-
 # OpenAppFilter
 [ "$ENABLE_OAF" = "y" ] && curl -s $mirror/configs/config-oaf >> .config
+
+# MosDNS
+# [ "$ENABLE_MOSDNS" = "y" ] && curl -s $mirror/configs/config-mosdns >> .config
 
 # OpenList
 # [ "$ENABLE_OPENLIST" = "y" ] && curl -s $mirror/configs/config-openlist >> .config
