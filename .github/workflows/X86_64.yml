@@ -45,7 +45,11 @@ on:
       adguardhome:
         description: '编绎 AdGuard Home '
         type: boolean
-        default: true          
+        default: true 
+      lucky:
+        description: '编绎 Lucky '
+        type: boolean
+        default: true   
       oaf:
         description: '编绎 OpenAppFilter 应用过滤 '
         type: boolean
