@@ -154,6 +154,31 @@ jobs:
         echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
         latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
         echo "latest_release=${latest_release}" >>$GITHUB_ENV
+        if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
+          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+        else
+          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+        fi
+        if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
+          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+        else
+          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+        fi
+        if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
+          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+        else
+          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+        fi
+        if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
+          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+        else
+          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+        fi
+        if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
+          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+        else
+          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+        fi
 
     - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
@@ -257,6 +282,14 @@ jobs:
           - 🚀 内核版本: ${{ env.KERNEL }}
           - 🌐 默认地址: ${{ env.IP_ADDR }}
           - 🔑 默认密码: ${{ github.event.inputs.root_password }}
+          - 📦 插件状态: ${{ env.PLUGIN_DOCKER }}
+          - 📦 插件状态: ${{ env.PLUGIN_SSRP }}
+          - 📦 插件状态: ${{ env.PLUGIN_PASSWALL }}
+          - 📦 插件状态: ${{ env.PLUGIN_NIKKI }}
+          - 📦 插件状态: ${{ env.PLUGIN_OPENCLASH }}
+          - 📦 插件状态: ${{ env.PLUGIN_ADGUARDHOME }}
+          - 📦 插件状态: ${{ env.PLUGIN_LUCKY }}
+          - 📦 插件状态: ${{ env.PLUGIN_OAF }}
           ### 🧊 固件版本
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
           - ${{ env.COMMIT_AUTHOR }}
