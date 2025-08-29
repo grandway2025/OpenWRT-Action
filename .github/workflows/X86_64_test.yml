@@ -190,9 +190,9 @@ jobs:
           echo "PLUGIN_LUCKY=未编译 Lucky" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.oaf }}" = "true" ]; then
-          echo "PLUGIN_OAF=已编译 OpenAppFilter 应用过滤" >> $GITHUB_ENV
+          echo "PLUGIN_OAF=已编译 OpenAppFilter" >> $GITHUB_ENV
         else
-          echo "PLUGIN_OAF=未编译 OpenAppFilter 应用过滤" >> $GITHUB_ENV
+          echo "PLUGIN_OAF=未编译 OpenAppFilter" >> $GITHUB_ENV
         fi
 
     - name: Cache Toolchain
