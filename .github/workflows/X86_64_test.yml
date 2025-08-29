@@ -55,7 +55,7 @@ on:
         type: boolean
         default: true   
       oaf:
-        description: '编绎 OpenAppFilter 应用过滤 '
+        description: '编绎 OpenAppFilter '
         type: boolean
         default: true  
         
@@ -155,44 +155,44 @@ jobs:
         latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
         echo "latest_release=${latest_release}" >>$GITHUB_ENV
         if [ "${{ github.event.inputs.docker }}" = "true" ]; then
-          echo "PLUGIN_DOCKER=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_DOCKER=已编译 Docker" >> $GITHUB_ENV
         else
-          echo "PLUGIN_DOCKER=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_DOCKER=未编译 Docker" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.ssrp }}" = "true" ]; then
-          echo "PLUGIN_SSRP=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_SSRP=已编译 ShadowSocksR Plus+" >> $GITHUB_ENV
         else
-          echo "PLUGIN_SSRP=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_SSRP=未编译 ShadowSocksR Plus+" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.passwall }}" = "true" ]; then
-          echo "PLUGIN_PASSWALL=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_PASSWALL=已编译 PassWall" >> $GITHUB_ENV
         else
-          echo "PLUGIN_PASSWALL=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_PASSWALL=未编译 PassWall" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.nikki }}" = "true" ]; then
-          echo "PLUGIN_NIKKI=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_NIKKI=已编译 Nikki" >> $GITHUB_ENV
         else
-          echo "PLUGIN_NIKKI=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_NIKKI=未编译 Nikki" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.openclash }}" = "true" ]; then
-          echo "PLUGIN_OPENCLASH=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_OPENCLASH=已编译 OpenClash" >> $GITHUB_ENV
         else
-          echo "PLUGIN_OPENCLASH=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_OPENCLASH=未编译 OpenClash" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.adguardhome }}" = "true" ]; then
-          echo "PLUGIN_ADGUARDHOME=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_ADGUARDHOME=已编译 AdGuard Home" >> $GITHUB_ENV
         else
-          echo "PLUGIN_ADGUARDHOME=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_ADGUARDHOME=未编译 AdGuard Home" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.lucky }}" = "true" ]; then
-          echo "PLUGIN_LUCKY=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_LUCKY=已编译 Lucky" >> $GITHUB_ENV
         else
-          echo "PLUGIN_LUCKY=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_LUCKY=未编译 Lucky" >> $GITHUB_ENV
         fi
         if [ "${{ github.event.inputs.oaf }}" = "true" ]; then
-          echo "PLUGIN_OAF=已编译" >> $GITHUB_ENV
+          echo "PLUGIN_OAF=已编译 OpenAppFilter 应用过滤" >> $GITHUB_ENV
         else
-          echo "PLUGIN_OAF=未编译" >> $GITHUB_ENV
+          echo "PLUGIN_OAF=未编译 OpenAppFilter 应用过滤" >> $GITHUB_ENV
         fi
 
     - name: Cache Toolchain
