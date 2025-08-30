@@ -73,7 +73,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
       with:
-        path: OpenWRT-Action
+        path: ZeroWrt-Action
       
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
