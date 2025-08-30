@@ -539,7 +539,3 @@ EOF
 
 # init openwrt config
 rm -rf tmp/*
-     
-# install feeds
-./scripts/feeds update -a
-./scripts/feeds install -a
