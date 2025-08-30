@@ -72,6 +72,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+      with:
+        path: OpenWRT-Action
       
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
@@ -136,13 +138,7 @@ jobs:
         cd $OPENWRT_PATH
         curl -o feeds.conf.default https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/refs/heads/main/Customize/feeds/feeds.conf.default
         ./scripts/feeds update -a
-        ./scripts/feeds install -a
-        
-    - name: Generate Variables
-      run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
+        ./scripts/feeds install -a      
         
     - name: Load Custom Configuration
       run: |     
@@ -154,12 +150,16 @@ jobs:
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         
-        # 运行自定义脚本
-        [ -e files ] && mv files $OPENWRT_PATH/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-        chmod +x $DIY_SCRIPT
+       # 准备自定义配置
         cd $OPENWRT_PATH
+        # 将自定义 files 目录移动过去
+        [ -e $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files ./files
+        # 使用绝对路径来复制配置文件，这是最稳健的方法
+        cp $GITHUB_WORKSPACE/$CONFIG_FILE ./.config
+        
+        # 运行自定义脚本
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+        chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
