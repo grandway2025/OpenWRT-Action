@@ -26,11 +26,6 @@ on:
         required: false
         default: 'password'
         type: string
-      build_options:
-        description: '构建选项（多个选项用空格分隔）'
-        required: false
-        default: 'BUILD_FAST=y ENABLE_BPF=y ENABLE_LTO=y'
-        type: string  
       docker:
         description: '编绎 Docker '
         type: boolean
