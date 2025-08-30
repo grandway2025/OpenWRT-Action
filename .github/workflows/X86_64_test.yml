@@ -46,10 +46,6 @@ on:
         description: '编绎 OpenClash '
         type: boolean
         default: true  
-      adguardhome:
-        description: '编绎 AdGuard Home '
-        type: boolean
-        default: true 
       lucky:
         description: '编绎 Lucky '
         type: boolean
@@ -179,11 +175,6 @@ jobs:
         else
           echo "PLUGIN_OPENCLASH=未编译 OpenClash" >> $GITHUB_ENV
         fi
-        if [ "${{ github.event.inputs.adguardhome }}" = "true" ]; then
-          echo "PLUGIN_ADGUARDHOME=已编译 AdGuard Home" >> $GITHUB_ENV
-        else
-          echo "PLUGIN_ADGUARDHOME=未编译 AdGuard Home" >> $GITHUB_ENV
-        fi
         if [ "${{ github.event.inputs.lucky }}" = "true" ]; then
           echo "PLUGIN_LUCKY=已编译 Lucky" >> $GITHUB_ENV
         else
@@ -216,8 +207,7 @@ jobs:
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
         [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
-        [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
-        [ ${{ github.event.inputs.adguardhome }} = 'true' ] && export ENABLE_ADGUARDHOME=y        
+        [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y     
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         [ -e files ] && mv files $OPENWRT_PATH/files
