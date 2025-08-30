@@ -72,8 +72,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
-      with:
-        path: ZeroWrt-Action
       
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
@@ -112,6 +110,9 @@ jobs:
     - name: Free disk space
       uses: zhiern/actions@free-disk
 
+    - name: Checkout
+      uses: actions/checkout@main
+
     - name: Build System Setup
       uses: zhiern/actions@openwrt-build-setup
 
@@ -121,6 +122,7 @@ jobs:
     - name: Clone Source Code
       run: |
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
+        curl -o ./openwrt/feeds.conf.default https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/refs/heads/main/Customize/feeds/feeds.conf.default
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
@@ -133,10 +135,25 @@ jobs:
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
         
+    - name: Generate Variables
+      run: |
+        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        cd $OPENWRT_PATH
+        make defconfig > /dev/null 2>&1
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+        echo "LAN=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
+        echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
+        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
+        echo "latest_release=${latest_release}" >>$GITHUB_ENV
+        
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
-        curl -o feeds.conf.default https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/refs/heads/main/Customize/feeds/feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a      
         
@@ -149,36 +166,15 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
-        
-       # 准备自定义配置
-        cd $OPENWRT_PATH
-        # 将自定义 files 目录移动过去
-        [ -e $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files ./files
-        # 使用绝对路径来复制配置文件，这是最稳健的方法
-        cp $GITHUB_WORKSPACE/$CONFIG_FILE ./.config
-        
-        # 运行自定义脚本
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-        chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
-        
-        # 生成最终的 .config 文件
-        make defconfig
-        
-        # 在 .config 文件最终确定后，生成其他环境变量
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        echo "LAN=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
-        echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
-        echo "latest_release=${latest_release}" >>$GITHUB_ENV
-        
+                
     - name: Compile Firmware
       id: compile
       run: |
