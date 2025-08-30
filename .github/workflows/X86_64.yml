@@ -140,6 +140,15 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
+        echo "--- Debugging Paths ---"
+        echo "Current PWD: $(pwd)"
+        echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+        echo "OPENWRT_PATH: $OPENWRT_PATH"
+        echo "CONFIG_FILE: $CONFIG_FILE"
+        
+        # 列出 configs 文件夹及其内容
+        ls -l $GITHUB_WORKSPACE/configs
+        
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
