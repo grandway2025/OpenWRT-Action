@@ -44,7 +44,7 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 [ "$ENABLE_OPENCLASH" = "y" ] && curl -s $mirror/configs/config-openclash >> .config
 
 # AdGuard Home
-[ "$ENABLE_ADGUARDHOME" = "y" ] && curl -s $mirror/configs/config-adguardhome >> .config
+# [ "$ENABLE_ADGUARDHOME" = "y" ] && curl -s $mirror/configs/config-adguardhome >> .config
 
 # Lucky
 [ "$ENABLE_LUCKY" = "y" ] && curl -s $mirror/configs/config-lucky >> .config
