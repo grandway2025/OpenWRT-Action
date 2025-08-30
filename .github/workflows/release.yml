@@ -147,6 +147,7 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
+        export LAN=${{ github.event.inputs.lan_addr }}
         # 准备自定义配置
         cd $OPENWRT_PATH
         [ -e ../files ] && mv ../files ./files
@@ -169,7 +170,7 @@ jobs:
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
         DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        echo "LAN=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
+        echo "LAN=${LAN}" >> $GITHUB_ENV 
         echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
         latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
         echo "latest_release=${latest_release}" >>$GITHUB_ENV
