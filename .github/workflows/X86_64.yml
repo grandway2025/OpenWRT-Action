@@ -89,6 +89,7 @@ jobs:
         key: ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config') }}-${{ hashFiles('scripts/diy-x86_64.sh') }}
         restore-keys: |
           ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-
+          ${{ runner.os }}-openwrt-
         
     - name: Setup Environment
       run: |
