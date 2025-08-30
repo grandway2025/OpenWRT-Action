@@ -149,8 +149,8 @@ jobs:
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         # 准备自定义配置
         cd $OPENWRT_PATH
-        [ -e ../files ] && mv ../files ./files
-        cp ../$CONFIG_FILE ./.config
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
         
