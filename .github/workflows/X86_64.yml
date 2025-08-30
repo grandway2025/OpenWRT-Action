@@ -78,13 +78,7 @@ jobs:
       with:
         key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
         max-size: 2G
-        
-    - name: 🔎 List files in the repository root
-      run: |
-        echo "Workspace directory is: $GITHUB_WORKSPACE"
-        echo "--- Listing all files and directories recursively ---"
-        ls -R
-        
+                
     - name: Cache Build Dependencies
       id: cache
       uses: actions/cache@v3
@@ -154,14 +148,13 @@ jobs:
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         # 准备自定义配置
-        # 准备自定义配置
         cd $OPENWRT_PATH
-        [ -e ../files ] && mv ../files ./files
-        cp ../$CONFIG_FILE ./.config
-        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-        chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
+        [ -e $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files ./files
+        cp $GITHUB_WORKSPACE/$CONFIG_FILE ./.config
         
         # 运行自定义脚本
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+        chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
