@@ -64,6 +64,9 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 # 高级设置
 # [ "$ENABLE_ADVANCEDPLUS" = "y" ] && curl -s $mirror/configs/config-advancedplus >> .config
 
+# Enabling LTO
+echo "CONFIG_LTO=y" >> .config
+
 # 移除 SNAPSHOT 标签
 sed -i 's,-SNAPSHOT,,g' include/version.mk
 sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
