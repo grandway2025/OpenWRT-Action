@@ -77,8 +77,25 @@ jobs:
     steps: 
     - name: Checkout
       uses: actions/checkout@main
+    - name: Cache Toolchain
+      uses: actions/cache@v3
       with:
-        path: ZeroWrt-Action
+        path: |
+          ${{ github.workspace }}/openwrt/staging_dir
+          ${{ github.workspace }}/openwrt/dl
+        key: ${{ runner.os }}-toolchain-${{ hashFiles('**/Makefile') }}
+        
+    - name: Setup ccache
+      run: |
+        sudo apt-get install ccache
+        export CC='ccache gcc'
+        export CXX='ccache g++'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev
+        sudo apt-get install -y zlib1g-dev gawk gitn
         
     - name: Setup variables
       run: |
@@ -145,6 +162,7 @@ jobs:
         cp $CONFIG_FILE $OPENWRT_PATH/.config
         cd $OPENWRT_PATH
         make defconfig > /dev/null 2>&1
+        make download -j$(nproc)
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
         DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
