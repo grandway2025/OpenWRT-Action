@@ -105,7 +105,7 @@ jobs:
         
     - name: Cache Build Dependencies
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           openwrt/dl
@@ -148,6 +148,7 @@ jobs:
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
         export LAN=${{ github.event.inputs.lan_addr }}
+        export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         # 准备自定义配置
         cd $OPENWRT_PATH
         [ -e ../files ] && mv ../files ./files
@@ -196,7 +197,7 @@ jobs:
         
     - name: Upload Bin Directory
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
@@ -216,7 +217,7 @@ jobs:
         
     - name: Upload Firmware To Artifact
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
