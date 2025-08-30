@@ -239,16 +239,16 @@ curl -s $mirror/doc/patch/firewall4/nftables/0002-nftables-add-brcm-fullconenat-
 curl -s $mirror/doc/patch/firewall4/nftables/0003-drop-rej-file.patch > package/network/utils/nftables/patches/0003-drop-rej-file.patch
 
 # FullCone module
-git clone https://$gitea/nft-fullcone package/new/nft-fullcone
+git clone https://$gitea/nft-fullcone package/new/nft-fullcone --depth=1
 
 # IPv6 NAT
-git clone https://$gitea/package_new_nat6 package/new/nat6
+git clone https://$gitea/package_new_nat6 package/new/nat6 --depth=1
 
 # natflow
-git clone https://$gitea/package_new_natflow package/new/natflow
+git clone https://$gitea/package_new_natflow package/new/natflow --depth=1
 
 # sfe
-git clone https://$github/zhiern/shortcut-fe package/new/shortcut-fe
+git clone https://$github/zhiern/shortcut-fe package/new/shortcut-fe --depth=1
 
 # Patch Luci add nft_fullcone/bcm_fullcone & shortcut-fe & natflow & ipv6-nat & custom nft command option
 pushd feeds/luci
@@ -396,57 +396,57 @@ sed -i 's/0666/0644/g;s/0777/0755/g' feeds/packages/net/samba4/files/smb.conf.te
 # aria2 & ariaNG
 rm -rf feeds/packages/net/ariang
 rm -rf feeds/luci/applications/luci-app-aria2
-git clone https://$github/sbwml/ariang-nginx package/new/ariang-nginx
+git clone https://$github/sbwml/ariang-nginx package/new/ariang-nginx --depth=1
 rm -rf feeds/packages/net/aria2
-git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages/net/aria2
+git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages/net/aria2 --depth=1
 
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
-git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld
+git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld --depth=1
 
 # alist
 # rm -rf feeds/packages/net/alist feeds/luci/applications/luci-app-alist
-# git clone https://$github/sbwml/luci-app-alist package/new/alist
+# git clone https://$github/sbwml/luci-app-alist package/new/alist --depth=1
 
 # openlist
 git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
 # luci-app-sqm
 rm -rf feeds/luci/applications/luci-app-sqm
-git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm
+git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
 
 # netdata
 sed -i 's/syslog/none/g' feeds/packages/admin/netdata/files/netdata.conf
 
 # caddy
-git clone https://git.kejizero.online/zhao/luci-app-caddy package/new/caddy
+git clone https://git.kejizero.online/zhao/luci-app-caddy package/new/caddy --depth=1
 
 # Mosdns
-git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns
+git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns --depth=1
 
 # OpenAppFilter
-git clone https://$github/destan19/OpenAppFilter package/new/OpenAppFilter
+git clone https://$github/destan19/OpenAppFilter package/new/OpenAppFilter --depth=1
 
 # adguardhome
-git clone https://$gitea/luci-app-adguardhome package/new/luci-app-adguardhome
+git clone https://$gitea/luci-app-adguardhome package/new/luci-app-adguardhome --depth=1
 
 # PowerOff 关机插件
-git clone https://github.com/sirpdboy/luci-app-poweroffdevice package/new/poweroff
+git clone https://github.com/sirpdboy/luci-app-poweroffdevice package/new/poweroff --depth=1
 mv -n package/new/poweroff/luci-app-poweroffdevice package/new/luci-app-poweroffdevice && rm -rf package/new/poweroff
 
 # luci-app-taskplan
-git clone https://github.com/sirpdboy/luci-app-taskplan package/new/luci-app-taskplan
+git clone https://github.com/sirpdboy/luci-app-taskplan package/new/luci-app-taskplan --depth=1
 
 # nlbwmon
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/root/usr/share/luci/menu.d/luci-app-nlbwmon.json
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/luci-static/resources/view/nlbw/config.js
 
 # mentohust
-git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust
+git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust --depth=1
 
 # luci-app-filetransfer
 # rm -rf feeds/luci/applications/luci-app-filetransfer
-# git clone https://$github/grandway2025/luci-app-filetransfer.git package/new/luci-app-filetransfer
+# git clone https://$github/grandway2025/luci-app-filetransfer.git package/new/luci-app-filetransfer --depth=1
 
 rm -rf feeds/luci/themes/luci-theme-argon
 git clone https://github.com/jerrykuku/luci-theme-argon.git package/new/luci-theme-argon
@@ -465,17 +465,17 @@ sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_b
 sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
 
 # luci-app-kucat-config
-# git clone https://$github/sirpdboy/luci-app-kucat-config.git package/new/luci-app-kucat-config
+# git clone https://$github/sirpdboy/luci-app-kucat-config.git package/new/luci-app-kucat-config --depth=1
 
 # luci-app-advancedplus
-git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus
+git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
 
 # luci-theme-kucat
-git clone https://$github/sirpdboy/luci-theme-kucat.git package/new/kucat
+git clone https://$github/sirpdboy/luci-theme-kucat.git package/new/kucat --depth=1
 mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf package/new/kucat
 
 # lucky
-git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky
+git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky --depth=1
 
 # custom packages pkgs
 rm -rf feeds/packages/utils/coremark
