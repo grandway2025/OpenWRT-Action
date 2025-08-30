@@ -111,6 +111,12 @@ if [ -n "$ROOT_PASSWORD" ]; then
     sed -i "s|^root:[^:]*:|root:${default_password}:|" package/base-files/files/etc/shadow
 fi
 
+# 选择OpenAppFilter开启eBPF 支持
+if [ "$ENABLE_OAF" = "y" ]; then
+  echo "Enabling eBPF support for OpenAppFilter..."
+  sed -i 's/# CONFIG_BPF_SYSCALL is not set/CONFIG_BPF_SYSCALL=y/' .config
+fi
+
 # fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
 sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
 
