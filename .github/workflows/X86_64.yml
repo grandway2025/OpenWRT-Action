@@ -97,12 +97,15 @@ jobs:
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
         
-    - name: Install Caddy Server (for local mirror)
+    - name: Install Caddy Server
       run: |
         sudo curl -sL -o /usr/bin/caddy https://github.com/zhiern/ZeroWrt-Action/releases/download/Caddy/caddy
         sudo chmod 755 /usr/bin/caddy
-        echo ":8080 { root * $(pwd); file_server browse; }" > caddyfile
-        sudo /usr/bin/caddy start --config caddyfile
+        echo ":8080 {" > caddyfile
+        echo "    root * $(pwd)" >> caddyfile
+        echo "    file_server browse" >> caddyfile
+        echo "}" >> caddyfile
+        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
         
     - name: Free disk space
       uses: zhiern/actions@free-disk
