@@ -163,10 +163,6 @@ jobs:
         cd $OPENWRT_PATH
         echo "CONFIG_GCC_VERSION=15" >> .config  # 指定 GCC 版本
         echo "CONFIG_LTO=y" >> .config           # 启用 LTO
-        echo "CONFIG_BPF=y" >> .config
-        echo "CONFIG_BPF_SYSCALL=y" >> .config
-        echo "CONFIG_BPF_EVENTS=y" >> .config
-        echo "CONFIG_BPF_TRACING=y" >> .config
         make defconfig > /dev/null 2>&1
         make download -j$(nproc)
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
