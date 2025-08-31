@@ -19,8 +19,8 @@ export github="github.com"
 sed -i 's/Os/O2/g' include/target.mk
 
 # 内核版本设置
-cp ../doc/kernel-6.6 > include/kernel-6.6
-cp ../doc/patch/kernel-6.6/kernel/0001-linux-module-video.patch > package/0001-linux-module-video.patch
+cp ../doc/kernel-6.6 include/kernel-6.6
+cp ../doc/patch/kernel-6.6/kernel/0001-linux-module-video.patch package/0001-linux-module-video.patch
 git apply package/0001-linux-module-video.patch
 rm -rf package/0001-linux-module-video.patch
 
@@ -80,8 +80,8 @@ sed -i 's/ubus_parallel_req 2/ubus_parallel_req 6/g' feeds/packages/net/nginx/fi
 sed -i '/ubus_parallel_req/a\        ubus_script_timeout 300;' feeds/packages/net/nginx/files-luci-support/60_nginx-luci-support
 
 # nginx - config
-cp ../Customize/nginx/luci.locations > feeds/packages/net/nginx/files-luci-support/luci.locations
-cp ../Customize/nginx/uci.conf.template > feeds/packages/net/nginx-util/files/uci.conf.template
+cp ../Customize/nginx/luci.locations feeds/packages/net/nginx/files-luci-support/luci.locations
+cp ../Customize/nginx/uci.conf.template feeds/packages/net/nginx-util/files/uci.conf.template
 
 # uwsgi - fix timeout
 sed -i '$a cgi-timeout = 600' feeds/packages/net/uwsgi/files-luci-support/luci-*.ini
@@ -121,7 +121,7 @@ sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' 
 # sed -i 's/OpenWrt/ZeroWrt/' package/base-files/files/bin/config_generate
 
 # banner
-# cp ../Customize/base-files/banner > package/base-files/files/etc/banner
+# cp ../Customize/base-files/banner package/base-files/files/etc/banner
 
 # make olddefconfig
 # cp ../doc/patch/kernel-6.6/kernel/0003-include-kernel-defaults.mk.patch | patch -p1
@@ -149,44 +149,44 @@ mkdir -p package/network/config/firewall4/patches
 sed -i 's|$(PROJECT_GIT)/project|https://github.com/openwrt|g' package/network/config/firewall4/Makefile
 
 # fix ct status dnat
-cp ../doc/patch/firewall4/firewall4_patches/990-unconditionally-allow-ct-status-dnat.patch > package/network/config/firewall4/patches/990-unconditionally-allow-ct-status-dnat.patch
+cp ../doc/patch/firewall4/firewall4_patches/990-unconditionally-allow-ct-status-dnat.patch package/network/config/firewall4/patches/990-unconditionally-allow-ct-status-dnat.patch
 
 # fullcone
-cp ../doc/patch/firewall4/firewall4_patches/999-01-firewall4-add-fullcone-support.patch > package/network/config/firewall4/patches/999-01-firewall4-add-fullcone-support.patch
+cp ../doc/patch/firewall4/firewall4_patches/999-01-firewall4-add-fullcone-support.patch package/network/config/firewall4/patches/999-01-firewall4-add-fullcone-support.patch
 
 # bcm fullcone
-cp ../doc/patch/firewall4/firewall4_patches/999-02-firewall4-add-bcm-fullconenat-support.patch > package/network/config/firewall4/patches/999-02-firewall4-add-bcm-fullconenat-support.patch
+cp ../doc/patch/firewall4/firewall4_patches/999-02-firewall4-add-bcm-fullconenat-support.patch package/network/config/firewall4/patches/999-02-firewall4-add-bcm-fullconenat-support.patch
 
 # fix flow offload
-cp ../doc/patch/firewall4/firewall4_patches/001-fix-fw4-flow-offload.patch > package/network/config/firewall4/patches/001-fix-fw4-flow-offload.patch
+cp ../doc/patch/firewall4/firewall4_patches/001-fix-fw4-flow-offload.patch package/network/config/firewall4/patches/001-fix-fw4-flow-offload.patch
 
 # add custom nft command support
 patch -p1 < ../doc/patch/firewall4/100-openwrt-firewall4-add-custom-nft-command-support.patch
 
 # libnftnl
 mkdir -p package/libs/libnftnl/patches
-cp ../doc/patch/firewall4/libnftnl/0001-libnftnl-add-fullcone-expression-support.patch > package/libs/libnftnl/patches/0001-libnftnl-add-fullcone-expression-support.patch
-cp ../doc/patch/firewall4/libnftnl/0002-libnftnl-add-brcm-fullcone-support.patch > package/libs/libnftnl/patches/0002-libnftnl-add-brcm-fullcone-support.patch
+cp ../doc/patch/firewall4/libnftnl/0001-libnftnl-add-fullcone-expression-support.patch package/libs/libnftnl/patches/0001-libnftnl-add-fullcone-expression-support.patch
+cp ../doc/patch/firewall4/libnftnl/0002-libnftnl-add-brcm-fullcone-support.patch package/libs/libnftnl/patches/0002-libnftnl-add-brcm-fullcone-support.patch
 
 # kernel patch
 # btf: silence btf module warning messages
-cp ../doc/patch/kernel-6.6/btf/990-btf-silence-btf-module-warning-messages.patch > target/linux/generic/hack-6.6/990-btf-silence-btf-module-warning-messages.patch
+cp ../doc/patch/kernel-6.6/btf/990-btf-silence-btf-module-warning-messages.patch target/linux/generic/hack-6.6/990-btf-silence-btf-module-warning-messages.patch
 # cpu model
-cp ../doc/patch/kernel-6.6/arm64/312-arm64-cpuinfo-Add-model-name-in-proc-cpuinfo-for-64bit-ta.patch > target/linux/generic/hack-6.6/312-arm64-cpuinfo-Add-model-name-in-proc-cpuinfo-for-64bit-ta.patch
+cp ../doc/patch/kernel-6.6/arm64/312-arm64-cpuinfo-Add-model-name-in-proc-cpuinfo-for-64bit-ta.patch target/linux/generic/hack-6.6/312-arm64-cpuinfo-Add-model-name-in-proc-cpuinfo-for-64bit-ta.patch
 # fullcone
-cp ../doc/patch/kernel-6.6/net/952-net-conntrack-events-support-multiple-registrant.patch > target/linux/generic/hack-6.6/952-net-conntrack-events-support-multiple-registrant.patch
+cp ../doc/patch/kernel-6.6/net/952-net-conntrack-events-support-multiple-registrant.patch target/linux/generic/hack-6.6/952-net-conntrack-events-support-multiple-registrant.patch
 # bcm-fullcone
-cp ../doc/patch/kernel-6.6/net/982-add-bcm-fullcone-support.patch > target/linux/generic/hack-6.6/982-add-bcm-fullcone-support.patch
-cp ../doc/patch/kernel-6.6/net/983-add-bcm-fullcone-nft_masq-support.patch > target/linux/generic/hack-6.6/983-add-bcm-fullcone-nft_masq-support.patch
+cp ../doc/patch/kernel-6.6/net/982-add-bcm-fullcone-support.patch target/linux/generic/hack-6.6/982-add-bcm-fullcone-support.patch
+cp ../doc/patch/kernel-6.6/net/983-add-bcm-fullcone-nft_masq-support.patch target/linux/generic/hack-6.6/983-add-bcm-fullcone-nft_masq-support.patch
 # shortcut-fe
-cp ../doc/patch/kernel-6.6/net/601-netfilter-export-udp_get_timeouts-function.patch > target/linux/generic/hack-6.6/601-netfilter-export-udp_get_timeouts-function.patch
-cp ../doc/patch/kernel-6.6/net/953-net-patch-linux-kernel-to-support-shortcut-fe.patch > target/linux/generic/hack-6.6/953-net-patch-linux-kernel-to-support-shortcut-fe.patch
+cp ../doc/patch/kernel-6.6/net/601-netfilter-export-udp_get_timeouts-function.patch target/linux/generic/hack-6.6/601-netfilter-export-udp_get_timeouts-function.patch
+cp ../doc/patch/kernel-6.6/net/953-net-patch-linux-kernel-to-support-shortcut-fe.patch target/linux/generic/hack-6.6/953-net-patch-linux-kernel-to-support-shortcut-fe.patch
 
 # nftables
 mkdir -p package/network/utils/nftables/patches
-cp ../doc/patch/firewall4/nftables/0001-nftables-add-fullcone-expression-support.patch > package/network/utils/nftables/patches/0001-nftables-add-fullcone-expression-support.patch
-cp ../doc/patch/firewall4/nftables/0002-nftables-add-brcm-fullconenat-support.patch > package/network/utils/nftables/patches/0002-nftables-add-brcm-fullconenat-support.patch
-cp ../doc/patch/firewall4/nftables/0003-drop-rej-file.patch > package/network/utils/nftables/patches/0003-drop-rej-file.patch
+cp ../doc/patch/firewall4/nftables/0001-nftables-add-fullcone-expression-support.patch package/network/utils/nftables/patches/0001-nftables-add-fullcone-expression-support.patch
+cp ../doc/patch/firewall4/nftables/0002-nftables-add-brcm-fullconenat-support.patch package/network/utils/nftables/patches/0002-nftables-add-brcm-fullconenat-support.patch
+cp ../doc/patch/firewall4/nftables/0003-drop-rej-file.patch package/network/utils/nftables/patches/0003-drop-rej-file.patch
 
 # FullCone module
 git clone https://$gitea/nft-fullcone package/new/nft-fullcone --depth=1
@@ -223,7 +223,7 @@ pushd feeds/luci
 popd
 
 # igc-fix
-cp ../doc/patch/kernel-6.6/igc-fix/996-intel-igc-i225-i226-disable-eee.patch > target/linux/x86/patches-6.6/996-intel-igc-i225-i226-disable-eee.patch
+cp ../doc/patch/kernel-6.6/igc-fix/996-intel-igc-i225-i226-disable-eee.patch target/linux/x86/patches-6.6/996-intel-igc-i225-i226-disable-eee.patch
 
 # Docker
 rm -rf feeds/luci/applications/luci-app-dockerman
@@ -237,8 +237,8 @@ mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf
 
 # UPnP
 rm -rf feeds/{packages/net/miniupnpd,luci/applications/luci-app-upnp}
-git clone https://$gitea/miniupnpd feeds/packages/net/miniupnpd -b v2.3.9
-git clone https://$gitea/luci-app-upnp feeds/luci/applications/luci-app-upnp -b openwrt-24.10
+git clone https://$gitea/miniupnpd feeds/packages/net/miniupnpd -b v2.3.9 --depth=1
+git clone https://$gitea/luci-app-upnp feeds/luci/applications/luci-app-upnp -b openwrt-24.10 --depth=1
 
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
@@ -271,7 +271,7 @@ mkdir -p files/bin
 cp ../doc/files/root/version.txt files/root/version.txt
 cp ../doc/files/bin/ZeroWrt files/bin/ZeroWrt
 chmod +x files/bin/ZeroWrt
-chmod +x files/root/version.txt
+chmod 644 files/root/version.txt
 
 # key-build.pub
 curl -so files/root/key-build.pub https://opkg.kejizero.online/key-build.pub
@@ -458,7 +458,7 @@ exit 0
 '> ./package/base-files/files/etc/rc.local
 
 # 默认设置
-git clone https://$github/grandway2025/default-settings package/new/default-settings -b openwrt-24.10
+git clone https://$github/grandway2025/default-settings package/new/default-settings -b openwrt-24.10 --depth=1
 
 # distfeeds.conf
 mkdir -p files/etc/opkg
