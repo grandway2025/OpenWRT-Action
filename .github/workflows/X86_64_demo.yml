@@ -140,6 +140,7 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
+        ccache --set-config=max_size=2G
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
