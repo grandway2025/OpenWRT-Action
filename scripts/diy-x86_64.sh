@@ -132,6 +132,7 @@ cp ../doc/patch/kernel-6.6/bbr3/*.patch target/linux/generic/backport-6.6/
 
 # LRNG
 cp ../doc/patch/kernel-6.6/lrng/*.patch target/linux/generic/hack-6.6/
+echo '
 # CONFIG_RANDOM_DEFAULT_IMPL is not set
 CONFIG_LRNG=y
 CONFIG_LRNG_DEV_IF=y
@@ -141,7 +142,7 @@ CONFIG_LRNG_CPU=y
 # CONFIG_LRNG_SCHED is not set
 CONFIG_LRNG_SELFTEST=y
 # CONFIG_LRNG_SELFTEST_PANIC is not set
-' >>./target/linux/generic/config-6.6
+' >> ./target/linux/generic/config-6.6
 
 # firewall4
 mkdir -p package/network/config/firewall4/patches
@@ -160,7 +161,7 @@ cp ../doc/patch/firewall4/firewall4_patches/999-02-firewall4-add-bcm-fullconenat
 cp ../doc/patch/firewall4/firewall4_patches/001-fix-fw4-flow-offload.patch > package/network/config/firewall4/patches/001-fix-fw4-flow-offload.patch
 
 # add custom nft command support
-cp ../doc/patch/firewall4/100-openwrt-firewall4-add-custom-nft-command-support.patch | patch -p1
+patch -p1 < ../doc/patch/firewall4/100-openwrt-firewall4-add-custom-nft-command-support.patch
 
 # libnftnl
 mkdir -p package/libs/libnftnl/patches
@@ -201,24 +202,24 @@ git clone https://$github/zhiern/shortcut-fe package/new/shortcut-fe --depth=1
 
 # Patch Luci add nft_fullcone/bcm_fullcone & shortcut-fe & natflow & ipv6-nat & custom nft command option
 pushd feeds/luci
-    cp ../doc/patch/firewall4/luci-24.10/0001-luci-app-firewall-add-nft-fullcone-and-bcm-fullcone-.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0002-luci-app-firewall-add-shortcut-fe-option.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0003-luci-app-firewall-add-ipv6-nat-option.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0004-luci-add-firewall-add-custom-nft-rule-support.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0005-luci-app-firewall-add-natflow-offload-support.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0006-luci-app-firewall-enable-hardware-offload-only-on-de.patch | patch -p1
-    cp ../doc/patch/firewall4/luci-24.10/0007-luci-app-firewall-add-fullcone6-option-for-nftables-.patch | patch -p1
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0001-luci-app-firewall-add-nft-fullcone-and-bcm-fullcone-.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0002-luci-app-firewall-add-shortcut-fe-option.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0003-luci-app-firewall-add-ipv6-nat-option.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0004-luci-add-firewall-add-custom-nft-rule-support.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0005-luci-app-firewall-add-natflow-offload-support.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0006-luci-app-firewall-enable-hardware-offload-only-on-de.patch
+    patch -p1 < ../../doc/patch/firewall4/luci-24.10/0007-luci-app-firewall-add-fullcone6-option-for-nftables-.patch
 popd
 
 # luci-mod extra
 pushd feeds/luci
-    cp ../doc/patch/luci/0001-luci-mod-system-add-modal-overlay-dialog-to-reboot.patch | patch -p1
-    cp ../doc/patch/luci/0002-luci-mod-status-displays-actual-process-memory-usage.patch | patch -p1
-    cp ../doc/patch/luci/0003-luci-mod-status-storage-index-applicable-only-to-val.patch | patch -p1
-    cp ../doc/patch/luci/0004-luci-mod-status-firewall-disable-legacy-firewall-rul.patch | patch -p1
-    cp ../doc/patch/luci/0005-luci-mod-system-add-refresh-interval-setting.patch | patch -p1
-    cp ../doc/patch/luci/0006-luci-mod-system-mounts-add-docker-directory-mount-po.patch | patch -p1
-    cp ../doc/patch/luci/0007-luci-mod-system-add-ucitrack-luci-mod-system-zram.js.patch | patch -p1
+    patch -p1 < ../../doc/patch/luci/0001-luci-mod-system-add-modal-overlay-dialog-to-reboot.patch
+    patch -p1 < ../../doc/patch/luci/0002-luci-mod-status-displays-actual-process-memory-usage.patch
+    patch -p1 < ../../doc/patch/luci/0003-luci-mod-status-storage-index-applicable-only-to-val.patch
+    patch -p1 < ../../doc/patch/luci/0004-luci-mod-status-firewall-disable-legacy-firewall-rul.patch
+    patch -p1 < ../../doc/patch/luci/0005-luci-mod-system-add-refresh-interval-setting.patch
+    patch -p1 < ../../doc/patch/luci/0006-luci-mod-system-mounts-add-docker-directory-mount-po.patch
+    patch -p1 < ../../doc/patch/luci/0007-luci-mod-system-add-ucitrack-luci-mod-system-zram.js.patch
 popd
 
 # igc-fix
@@ -266,7 +267,7 @@ cp ../doc/files/etc/sysctl.d/16-udp-buffer-size.conf files/etc/sysctl.d/16-udp-b
 
 # ZeroWrt Options Menu
 mkdir -p files/bin
-mkdir -p root
+# mkdir -p root
 cp ../doc/files/root/version.txt files/root/version.txt
 cp ../doc/files/bin/ZeroWrt files/bin/ZeroWrt
 chmod +x files/bin/ZeroWrt
@@ -274,7 +275,7 @@ chmod +x files/root/version.txt
 
 # key-build.pub
 curl -so files/root/key-build.pub https://opkg.kejizero.online/key-build.pub
-chmod +x files/root/key-build.pub
+chmod 644 files/root/key-build.pub
 
 # NTP
 sed -i 's/0.openwrt.pool.ntp.org/ntp1.aliyun.com/g' package/base-files/files/bin/config_generate
@@ -293,13 +294,13 @@ sed -i "/BUILD_ID/aBUILD_DATE=\"$CURRENT_DATE\"" package/base-files/files/usr/li
 
 # golang 1.25
 rm -rf feeds/packages/lang/golang
-git clone https://$github/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+git clone https://$github/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang --depth=1
 
 # luci-app-webdav
-git clone https://$github/sbwml/luci-app-webdav package/new/luci-app-webdav
+git clone https://$github/sbwml/luci-app-webdav package/new/luci-app-webdav --depth=1
 
 # luci-app-quickfile
-git clone https://$github/sbwml/luci-app-quickfile package/new/quickfile
+git clone https://$github/sbwml/luci-app-quickfile package/new/quickfile --depth=1
 
 # ddns - fix boot
 sed -i '/boot()/,+2d' feeds/packages/net/ddns-scripts/files/etc/init.d/ddns
@@ -405,7 +406,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/lu
 
 # argon && argon-config
 rm -rf feeds/luci/themes/luci-theme-argon
-git clone https://github.com/grandway2025/argon package/new/luci-theme-argon
+git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
 
 # 主题设置
 # sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer.ut
