@@ -6,6 +6,8 @@
 # 脚本URL
 # export mirror=http://127.0.0.1:8080
 
+export CURRENT_DATE="$(date +%Y-%m-%d)"
+
 # 私有Gitea
 export gitea=git.kejizero.online/zhao
 
