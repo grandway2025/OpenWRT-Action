@@ -274,13 +274,13 @@ curl -s $mirror/doc/patch/kernel-6.6/igc-fix/996-intel-igc-i225-i226-disable-eee
 
 # Docker
 rm -rf feeds/luci/applications/luci-app-dockerman
-git clone https://github.com/sirpdboy/luci-app-dockerman.git package/new/dockerman
+git clone https://github.com/sirpdboy/luci-app-dockerman.git package/new/dockerman --depth=1
 mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf package/new/dockerman
     rm -rf feeds/packages/utils/{docker,dockerd,containerd,runc}
-    git clone https://$github/sbwml/packages_utils_docker feeds/packages/utils/docker
-    git clone https://$github/sbwml/packages_utils_dockerd feeds/packages/utils/dockerd
-    git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd
-    git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc
+    git clone https://$github/sbwml/packages_utils_docker feeds/packages/utils/docker --depth=1
+    git clone https://$github/sbwml/packages_utils_dockerd feeds/packages/utils/dockerd --depth=1
+    git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd --depth=1
+    git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc --depth=1
 
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
@@ -372,10 +372,10 @@ popd
 
 # samba4 - bump version
 rm -rf feeds/packages/net/samba4
-git clone https://$github/sbwml/feeds_packages_net_samba4 feeds/packages/net/samba4
+git clone https://$github/sbwml/feeds_packages_net_samba4 feeds/packages/net/samba4 --depth=1
 # liburing - 2.7 (samba-4.21.0)
 rm -rf feeds/packages/libs/liburing
-git clone https://$github/sbwml/feeds_packages_libs_liburing feeds/packages/libs/liburing
+git clone https://$github/sbwml/feeds_packages_libs_liburing feeds/packages/libs/liburing --depth=1
 # enable multi-channel
 sed -i '/workgroup/a \\n\t## enable multi-channel' feeds/packages/net/samba4/files/smb.conf.template
 sed -i '/enable multi-channel/a \\tserver multi channel support = yes' feeds/packages/net/samba4/files/smb.conf.template
@@ -391,11 +391,11 @@ sed -i 's/0666/0644/g;s/0777/0755/g' feeds/packages/net/samba4/files/samba.confi
 sed -i 's/0666/0644/g;s/0777/0755/g' feeds/packages/net/samba4/files/smb.conf.template
 
 # aria2 & ariaNG
-rm -rf feeds/packages/net/ariang
-rm -rf feeds/luci/applications/luci-app-aria2
-git clone https://$github/sbwml/ariang-nginx package/new/ariang-nginx --depth=1
-rm -rf feeds/packages/net/aria2
-git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages/net/aria2 --depth=1
+# rm -rf feeds/packages/net/ariang
+# rm -rf feeds/luci/applications/luci-app-aria2
+# git clone https://$github/sbwml/ariang-nginx package/new/ariang-nginx --depth=1
+# rm -rf feeds/packages/net/aria2
+# git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages/net/aria2 --depth=1
 
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
@@ -409,8 +409,8 @@ git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/ne
 git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
 # luci-app-sqm
-rm -rf feeds/luci/applications/luci-app-sqm
-git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
+# rm -rf feeds/luci/applications/luci-app-sqm
+# git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
 
 # netdata
 sed -i 's/syslog/none/g' feeds/packages/admin/netdata/files/netdata.conf
@@ -439,7 +439,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/root/usr/
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/luci-static/resources/view/nlbw/config.js
 
 # mentohust
-git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust --depth=1
+# git clone https://$github/sbwml/luci-app-mentohust package/new/mentohust --depth=1
 
 # luci-app-filetransfer
 # rm -rf feeds/luci/applications/luci-app-filetransfer
