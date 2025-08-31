@@ -282,28 +282,29 @@ mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf
     git clone https://$github/sbwml/packages_utils_containerd feeds/packages/utils/containerd --depth=1
     git clone https://$github/sbwml/packages_utils_runc feeds/packages/utils/runc --depth=1
 
+# UPnP
+rm -rf feeds/{packages/net/miniupnpd,luci/applications/luci-app-upnp}
+git clone https://$gitea/miniupnpd feeds/packages/net/miniupnpd -b v2.3.9
+git clone https://$gitea/luci-app-upnp feeds/luci/applications/luci-app-upnp -b openwrt-24.10
+
 # TTYD
 sed -i 's/services/system/g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
 sed -i '3 a\\t\t"order": 50,' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
 sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/g' feeds/packages/utils/ttyd/files/ttyd.init
 sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/utils/ttyd/files/ttyd.init
 
-# UPnP
-rm -rf feeds/{packages/net/miniupnpd,luci/applications/luci-app-upnp}
-git clone https://$gitea/miniupnpd feeds/packages/net/miniupnpd -b v2.3.9
-git clone https://$gitea/luci-app-upnp feeds/luci/applications/luci-app-upnp -b openwrt-24.10
-
 # profile
 sed -i 's#\\u@\\h:\\w\\\$#\\[\\e[32;1m\\][\\u@\\h\\[\\e[0m\\] \\[\\033[01;34m\\]\\W\\[\\033[00m\\]\\[\\e[32;1m\\]]\\[\\e[0m\\]\\\$#g' package/base-files/files/etc/profile
 sed -ri 's/(export PATH=")[^"]*/\1%PATH%:\/opt\/bin:\/opt\/sbin:\/opt\/usr\/bin:\/opt\/usr\/sbin/' package/base-files/files/etc/profile
-sed -i '/PS1/a\export TERM=xterm-color' package/base-files/files/etc/profile
+sed -i '/ENV/i\export TERM=xterm-color' package/base-files/files/etc/profile
+
 
 # 切换bash
 sed -i 's#ash#bash#g' package/base-files/files/etc/passwd
 sed -i '\#export ENV=/etc/shinit#a export HISTCONTROL=ignoredups' package/base-files/files/etc/profile
 mkdir -p files/root
 curl -so files/root/.bash_profile $mirror/doc/files/root/.bash_profile
-curl -so files/root/.bashrc $mirror/doc/files/root/.bashrc
+curl -so files/root/.bashrc $mirror/doc/files/root/.bash_profile
 
 # rootfs files
 mkdir -p files/etc/sysctl.d
@@ -320,8 +321,8 @@ chmod +x files/bin/ZeroWrt
 chmod +x files/root/version.txt
 
 # key-build.pub
-curl -so files/root/my-private.key.pub https://raw.githubusercontent.com/zhiern/ipkg-make-index/refs/heads/main/my-private.key.pub
-chmod +x files/root/my-private.key.pub
+curl -so files/root/key-build.pub https://opkg.kejizero.online/key-build.pub
+chmod +x files/root/key-build.pub
 
 # NTP
 sed -i 's/0.openwrt.pool.ntp.org/ntp1.aliyun.com/g' package/base-files/files/bin/config_generate
