@@ -70,35 +70,49 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-    - name: Checkout         
-      uses: actions/checkout@v4 
-      
-    - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
-        max-size: 2G
-        
-    - name: Cache Build Dependencies
-      id: cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          openwrt/dl
-          openwrt/staging_dir
-        key: ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config') }}-${{ hashFiles('scripts/diy-x86_64.sh') }}
-        restore-keys: |
-          ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-
-          
     - name: Setup Environment
       run: |
         sudo timedatectl set-timezone 'Asia/Shanghai'
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
           
-    - name: Free disk space
-      uses: sbwml/actions@free-disk
-           
+    - name: Clean system space
+      run: |
+        sudo apt-get clean
+        sudo rm -rf /usr/share/doc/*
+      
+    - name: Checkout         
+      uses: actions/checkout@v4 
+      
+    - name: Build System Setup
+      uses: zhiern/actions@openwrt-build-setup
+      
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
+        max-size: 2G
+                
+    - name: Cache Downloads
+      uses: actions/cache@v4
+      with:
+        path: openwrt/dl
+        key: dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles('feeds.conf.default') }}
+        restore-keys: |
+          dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-
+          dl-${{ runner.os }}-
+          
+    - name: Cache Toolchain
+      uses: actions/cache@v4
+      with:
+        path: |
+          openwrt/staging_dir/host
+          openwrt/staging_dir/toolchain-*
+        key: toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config') }}
+        restore-keys: |
+          toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-
+          toolchain-${{ runner.os }}-
+          
     - name: Clone Source Code
       run: |
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
@@ -113,10 +127,7 @@ jobs:
         COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-                       
-    - name: Build System Setup
-      uses: zhiern/actions@openwrt-build-setup
-
+        
     - name: Install LLVM
       uses: zhiern/actions@install-llvm
                          
