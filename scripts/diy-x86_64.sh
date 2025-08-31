@@ -446,21 +446,13 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/lu
 # rm -rf feeds/luci/applications/luci-app-filetransfer
 # git clone https://$github/grandway2025/luci-app-filetransfer.git package/new/luci-app-filetransfer --depth=1
 
+# argon && argon-config
 rm -rf feeds/luci/themes/luci-theme-argon
-git clone https://github.com/jerrykuku/luci-theme-argon.git package/new/luci-theme-argon
-curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/argon/bg1.jpg  > package/new/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
-curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/argon/iconfont.ttf > package/new/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.ttf
-curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/argon/iconfont.woff > package/new/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.woff
-curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/argon/iconfont.woff2 > package/new/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.woff2
-curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/argon/cascade.css > package/new/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
-
-# argon-config
-git clone https://$github/grandway2025/luci-app-argon-config.git package/new/luci-app-argon-config
-sed -i "s/bing/none/g" package/new/luci-app-argon-config/root/etc/config/argon
+git clone https://github.com/grandway2025/argon package/new/luci-theme-argon
 
 # 主题设置
-sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer.ut
-sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
+# sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer.ut
+# sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
 
 # luci-app-kucat-config
 # git clone https://$github/sirpdboy/luci-app-kucat-config.git package/new/luci-app-kucat-config --depth=1
