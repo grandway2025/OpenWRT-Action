@@ -2,9 +2,8 @@ name: 🔄 Update Checker
 
 on:
   workflow_dispatch:
-  schedule:
-     schedule:
-     - cron:  */18 * * *
+    #  schedule:
+    #  - cron:  */18 * * *
 
 jobs:
   check:
