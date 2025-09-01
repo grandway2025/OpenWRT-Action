@@ -127,9 +127,6 @@ jobs:
         
     - name: Build System Setup
       uses: zhiern/actions@openwrt-build-setup
-
-    - name: Install LLVM
-      uses: zhiern/actions@install-llvm
                          
     - name: Install Feeds
       run: |
