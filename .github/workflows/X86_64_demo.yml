@@ -76,10 +76,8 @@ jobs:
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
           
-    - name: Clean system space
-      run: |
-        sudo apt-get clean
-        sudo rm -rf /usr/share/doc/*
+    - name: Free disk space
+      uses: sbwml/actions@free-disk
       
     - name: Checkout         
       uses: actions/checkout@v4 
@@ -127,10 +125,7 @@ jobs:
         COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-        
-    - name: Install LLVM
-      uses: zhiern/actions@install-llvm
-                         
+                                
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
