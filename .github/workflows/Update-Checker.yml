@@ -5,6 +5,8 @@ on:
   schedule:
     # schedule:
     # - cron:  */18 * * *
+    # watch:
+    #   types: started
 
 jobs:
   check:
