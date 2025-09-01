@@ -172,6 +172,9 @@ jobs:
         latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
         echo "latest_release=${latest_release}" >>$GITHUB_ENV
                 
+    - name: Install LLVM
+      uses: sbwml/actions@install-llvm
+      
     - name: Compile Firmware
       id: compile
       run: |
