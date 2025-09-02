@@ -54,11 +54,21 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-    - name: Set Timezone & Git Info
+    - name: Set Timezone
       run: |
         sudo timedatectl set-timezone Asia/Shanghai
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
+
+    - name: Install Caddy Server
+      run: |
+        sudo curl -sL -o /usr/bin/caddy https://github.com/NeonPulse-Zero/ZeroWrt/releases/download/Caddy/caddy
+        sudo chmod 755 /usr/bin/caddy
+        echo ":8080 {" > caddyfile
+        echo "    root * $(pwd)/ZeroWrt" >> caddyfile
+        echo "    file_server browse" >> caddyfile
+        echo "}" >> caddyfile
+        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
         
     - name: Free Disk Space
       uses: sbwml/actions@free-disk
@@ -99,17 +109,7 @@ jobs:
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         git log -1 --pretty=format:"COMMIT_AUTHOR=%an%nCOMMIT_DATE=%ci%nCOMMIT_MESSAGE=%s%nCOMMIT_HASH=%H" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-        
-    - name: Install Caddy Server
-      run: |
-        sudo curl -sL -o /usr/bin/caddy https://github.com/NeonPulse-Zero/ZeroWrt/releases/download/Caddy/caddy
-        sudo chmod 755 /usr/bin/caddy
-        echo ":8080 {" > caddyfile
-        echo "    root * $(pwd)/ZeroWrt" >> caddyfile
-        echo "    file_server browse" >> caddyfile
-        echo "}" >> caddyfile
-        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
-        
+         
     - name: Install LLVM
       uses: sbwml/actions@install-llvm
       
