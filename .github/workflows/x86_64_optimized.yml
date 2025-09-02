@@ -53,6 +53,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 420  # 设置为 7 小时
     steps:
     - name: Set Timezone
       run: |
