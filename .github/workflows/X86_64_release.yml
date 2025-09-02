@@ -59,7 +59,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   CONFIG_FILE: configs/x86_64.config
-  DIY_SCRIPT: scripts/x86_64.sh
+  DIY_SCRIPT: scripts/diy-x86_64.sh
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
@@ -103,17 +103,25 @@ jobs:
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
         
-    - name: Cache Build Dependencies
-      id: cache
+    - name: Cache Downloads
+      uses: actions/cache@v4
+      with:
+        path: openwrt/dl
+        key: dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles('feeds.conf.default') }}-${{ hashFiles(env.CONFIG_FILE) }}
+        restore-keys: |
+          dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-
+          dl-${{ runner.os }}-
+          
+    - name: Cache Toolchain
       uses: actions/cache@v4
       with:
         path: |
-          openwrt/dl
-          openwrt/staging_dir
-        key: ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config') }}-${{ hashFiles('scripts/diy-x86_64.sh') }}
+          openwrt/staging_dir/host
+          openwrt/staging_dir/toolchain-*
+        key: toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles(env.CONFIG_FILE) }}
         restore-keys: |
-          ${{ runner.os }}-openwrt-${{ env.REPO_BRANCH }}-
-          ${{ runner.os }}-openwrt-
+          toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-
+          toolchain-${{ runner.os }}-
                      
     - name: Install Caddy Server
       run: |
@@ -137,7 +145,6 @@ jobs:
         
     - name: Load Custom Configuration
       run: |
-        ccache --set-config=max_size=2G
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
         [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
         [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
@@ -145,6 +152,7 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
+        ccache --set-config=max_size=2G
         export LAN=${{ github.event.inputs.lan_addr }}
         export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         # 准备自定义配置
