@@ -44,7 +44,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   CONFIG_FILE: configs/x86_64.config
-  DIY_SCRIPT: scripts/diy-x86_64.sh
+  DIY_SCRIPT: scripts/x86_64.sh
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
@@ -59,16 +59,20 @@ jobs:
         sudo timedatectl set-timezone Asia/Shanghai
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
+        
     - name: Free Disk Space
       uses: sbwml/actions@free-disk
-    - name: Checkout Repo
-      uses: actions/checkout@v4
+      
+    - name: Checkout         
+      uses: actions/checkout@v4 
+      
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
         max-size: 2G
-    - name: Cache - Downloads
+        
+    - name: Cache Downloads
       uses: actions/cache@v4
       with:
         path: openwrt/dl
@@ -76,7 +80,8 @@ jobs:
         restore-keys: |
           dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-
           dl-${{ runner.os }}-
-    - name: Cache - Toolchain
+          
+    - name: Cache Toolchain
       uses: actions/cache@v4
       with:
         path: |
@@ -86,24 +91,39 @@ jobs:
         restore-keys: |
           toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-
           toolchain-${{ runner.os }}-
-    - name: Clone OpenWrt Source
+          
+    - name: Clone Source Code
       run: |
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         git log -1 --pretty=format:"COMMIT_AUTHOR=%an%nCOMMIT_DATE=%ci%nCOMMIT_MESSAGE=%s%nCOMMIT_HASH=%H" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-    - name: Install LLVM Toolchain
+        
+    - name: Install Caddy Server
+      run: |
+        sudo curl -sL -o /usr/bin/caddy https://github.com/NeonPulse-Zero/ZeroWrt/releases/download/Caddy/caddy
+        sudo chmod 755 /usr/bin/caddy
+        echo ":8080 {" > caddyfile
+        echo "    root * $(pwd)/ZeroWrt" >> caddyfile
+        echo "    file_server browse" >> caddyfile
+        echo "}" >> caddyfile
+        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
+        
+    - name: Install LLVM
       uses: sbwml/actions@install-llvm
-    - name: Setup Build Environment
-      uses: zhiern/actions@openwrt-build-setup
+      
+    - name: Build System Setup
+      uses: sbwml/actions@openwrt-build-setup
+      
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
         curl -o feeds.conf.default https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/refs/heads/main/Customize/feeds/feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-    - name: Load Custom Config & DIY
+        
+    - name: Load Custom Configuration
       run: |
         ccache --set-config=max_size=2G
         export LAN=${{ github.event.inputs.lan_addr }}
@@ -129,6 +149,7 @@ jobs:
         echo "DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | cut -d'\"' -f2)" >> $GITHUB_ENV
         latest_release=$(curl -s https://github.com/openwrt/openwrt/tags | grep -oE 'v[0-9\.]+\-*r*c*[0-9]*.tar.gz' | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')
         echo "latest_release=${latest_release}" >> $GITHUB_ENV
+        
     - name: Compile Firmware
       id: compile
       run: |
@@ -141,9 +162,11 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
         echo "FILE_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
         echo "TAG_TIME=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+        
     - name: Check Space Usage
       if: success()
       run: df -hT
+      
     - name: Organize Firmware Files
       if: steps.compile.outputs.status == 'success'
       run: |
@@ -154,18 +177,21 @@ jobs:
         rm -rf packages feeds.buildinfo version.buildinfo kernel
         echo "KERNEL=$(grep ^kernel *.manifest | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+        
     - name: Upload Bin Directory (Optional)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
+        
     - name: Upload Firmware to Artifact
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
+        
     - name: Upload Firmware to GitHub Release
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1.14.0
@@ -185,14 +211,8 @@ jobs:
           - 🌐 默认地址: ${{ env.IP_ADDR }}
           - 🔑 默认密码: ${{ env.ROOT_PASSWORD }}
           ### 🧊 固件版本
-          - 提交记录: ${{ env.COMMIT_AUTHOR }} / ${{ env.COMMIT_DATE }}  
-          - 内容: ${{ env.COMMIT_MESSAGE }}  
-          - 哈希: ${{ env.COMMIT_HASH }}
-    # 可选：本地测试 HTTP 服务
-    - name: Launch Local Caddy Server (Optional)
-      if: always()
-      run: |
-        sudo curl -sL -o /usr/bin/caddy https://github.com/NeonPulse-Zero/ZeroWrt/releases/download/Caddy/caddy
-        sudo chmod 755 /usr/bin/caddy
-        echo ":8080 { root * $(pwd)/ZeroWrt file_server browse }" > caddyfile
-        sudo caddy start --config caddyfile --adapter caddyfile
+          - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+          - ${{ env.COMMIT_AUTHOR }}
+          - ${{ env.COMMIT_DATE }}
+          - ${{ env.COMMIT_MESSAGE }}
+          - ${{ env.COMMIT_HASH }}
