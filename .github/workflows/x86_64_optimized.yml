@@ -60,16 +60,6 @@ jobs:
         sudo timedatectl set-timezone Asia/Shanghai
         git config --global user.name 'actions'
         git config --global user.email 'action@github.com'
-
-    - name: Install Caddy Server
-      run: |
-        sudo curl -sL -o /usr/bin/caddy https://github.com/grandway2025/Actions-OpenWrt/releases/download/Caddy/caddy
-        sudo chmod 755 /usr/bin/caddy
-        echo ":8080 {" > caddyfile
-        echo "    root * $(pwd)" >> caddyfile
-        echo "    file_server browse" >> caddyfile
-        echo "}" >> caddyfile
-        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
         
     - name: Free Disk Space
       uses: sbwml/actions@free-disk
@@ -80,29 +70,9 @@ jobs:
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
-        key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
-        max-size: 10G
+        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }}-${{ github.ref }}
+        max-size: 10G # (1) 增加 ccache 容量到 10G
         
-    - name: Cache Downloads
-      uses: actions/cache@v4
-      with:
-        path: openwrt/dl
-        key: dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles('feeds.conf.default') }}-${{ hashFiles(env.CONFIG_FILE) }}
-        restore-keys: |
-          dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-
-          dl-${{ runner.os }}-
-          
-    - name: Cache Toolchain
-      uses: actions/cache@v4
-      with:
-        path: |
-          openwrt/staging_dir/host
-          openwrt/staging_dir/toolchain-*
-        key: toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles(env.CONFIG_FILE) }}
-        restore-keys: |
-          toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-
-          toolchain-${{ runner.os }}-
-          
     - name: Clone Source Code
       run: |
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
@@ -110,10 +80,35 @@ jobs:
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         git log -1 --pretty=format:"COMMIT_AUTHOR=%an%nCOMMIT_DATE=%ci%nCOMMIT_MESSAGE=%s%nCOMMIT_HASH=%H" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-         
-    - name: Install LLVM
-      uses: sbwml/actions@install-llvm
-      
+        
+    - name: Cache Downloads
+      uses: actions/cache@v4
+      with:
+        path: openwrt/dl
+        key: dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }} # (2) 优化 dl 缓存 key
+        restore-keys: |
+          dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+          
+    - name: Cache Toolchain
+      uses: actions/cache@v4
+      with:
+        path: |
+          openwrt/staging_dir/host
+          openwrt/staging_dir/toolchain-*
+        key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }} # (3) 优化 toolchain 缓存 key
+        restore-keys: |
+          toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+              
+    - name: Install Caddy Server
+      run: |
+        sudo curl -sL -o /usr/bin/caddy https://github.com/grandway2025/Actions-OpenWrt/releases/download/Caddy/caddy
+        sudo chmod 755 /usr/bin/caddy
+        echo ":8080 {" > caddyfile
+        echo "    root * $(pwd)" >> caddyfile
+        echo "    file_server browse" >> caddyfile
+        echo "}" >> caddyfile
+        sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
+        
     - name: Build System Setup
       uses: sbwml/actions@openwrt-build-setup
       
@@ -150,19 +145,36 @@ jobs:
         latest_release=$(curl -s https://github.com/openwrt/openwrt/tags | grep -oE 'v[0-9\.]+\-*r*c*[0-9]*.tar.gz' | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')
         echo "latest_release=${latest_release}" >> $GITHUB_ENV
         
-    - name: Compile Firmware
+    - name: Install LLVM
+      uses: sbwml/actions@install-llvm
+      
+    - name: Build tools # (4) 编译流程拆分第一步
+      run: |
+        cd $OPENWRT_PATH
+        export PATH="/usr/lib/ccache:$PATH"
+        export CCACHE_DIR="$HOME/.ccache"
+        export CCACHE_BASEDIR="$OPENWRT_PATH"
+        make tools/install -j$(nproc) || make tools/install -j1 V=s
+    - name: Build toolchain # (5) 编译流程拆分第二步
+      run: |
+        cd $OPENWRT_PATH
+        export PATH="/usr/lib/ccache:$PATH"
+        export CCACHE_DIR="$HOME/.ccache"
+        export CCACHE_BASEDIR="$OPENWRT_PATH"
+        make toolchain/install -j$(nproc) || make toolchain/install -j1 V=s
+    - name: Compile Firmware # (6) 编译流程拆分第三步
       id: compile
       run: |
         cd $OPENWRT_PATH
         export PATH="/usr/lib/ccache:$PATH"
+        export CCACHE_DIR="$HOME/.ccache"
+        export CCACHE_BASEDIR="$OPENWRT_PATH"
         echo "Compiling with $(nproc) threads..."
         ccache -s
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        make -j$(nproc) || make -j1 V=s
         ccache -s
         echo "status=success" >> $GITHUB_OUTPUT
-        echo "FILE_DATE=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
-        echo "TAG_TIME=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
-        
+     
     - name: Check Space Usage
       if: success()
       run: df -hT
