@@ -81,7 +81,7 @@ jobs:
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
-        max-size: 5G
+        max-size: 10G
         
     - name: Cache Downloads
       uses: actions/cache@v4
@@ -125,8 +125,7 @@ jobs:
         ./scripts/feeds install -a
         
     - name: Load Custom Configuration
-      run: |
-        ccache --set-config=max_size=5G
+      run: |   
         export LAN=${{ github.event.inputs.lan_addr }}
         export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
