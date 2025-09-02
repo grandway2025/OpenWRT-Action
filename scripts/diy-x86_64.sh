@@ -43,11 +43,11 @@ grep HASH include/kernel-6.6 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | m
 # openclash
 [ "$ENABLE_OPENCLASH" = "y" ] && curl -s $mirror/configs/config-openclash >> .config
 
-# AdGuard Home
-# [ "$ENABLE_ADGUARDHOME" = "y" ] && curl -s $mirror/configs/config-adguardhome >> .config
-
 # Lucky
 [ "$ENABLE_LUCKY" = "y" ] && curl -s $mirror/configs/config-lucky >> .config
+
+# AdGuard Home
+# [ "$ENABLE_ADGUARDHOME" = "y" ] && curl -s $mirror/configs/config-adguardhome >> .config
 
 # OpenAppFilter
 [ "$ENABLE_OAF" = "y" ] && curl -s $mirror/configs/config-oaf >> .config
@@ -401,16 +401,12 @@ git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
 git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld --depth=1
 
-# alist
-# rm -rf feeds/packages/net/alist feeds/luci/applications/luci-app-alist
-# git clone https://$github/sbwml/luci-app-alist package/new/alist --depth=1
-
 # openlist
 git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
 # luci-app-sqm
 rm -rf feeds/luci/applications/luci-app-sqm
-git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
+# git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
 
 # netdata
 sed -i 's/syslog/none/g' feeds/packages/admin/netdata/files/netdata.conf
@@ -472,7 +468,7 @@ git clone https://$github/sbwml/openwrt_pkgs package/new/custom --depth=1
 rm -rf package/new/custom/luci-app-adguardhome
 
 # autocore-arm
-git clone https://$gitea/autocore-arm package/new/autocore-arm
+git clone https://$gitea/autocore-arm package/new/autocore-arm --depth=1
 
 sed -i 's/O2/O2 -march=x86-64-v2/g' include/target.mk
 
