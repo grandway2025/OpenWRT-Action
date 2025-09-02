@@ -131,25 +131,28 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
+        
         cd $OPENWRT_PATH
         [ -e ../files ] && mv ../files ./files
         cp ../$CONFIG_FILE .config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
+        
+        # 运行自定义脚本
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+        
         make defconfig
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
+        
+        # 集中设置环境变量
+        echo "SOURCE_REPO=$(basename $REPO_URL)" >> $GITHUB_ENV
+        echo "DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | cut -d'\"' -f2)" >> $GITHUB_ENV
+        echo "DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | cut -d'\"' -f2)" >> $GITHUB_ENV
+        echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
         echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
-        echo "latest_release=${latest_release}" >>$GITHUB_ENV
+        latest_release=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | grep "tag_name" | head -n 1 | cut -d : -f2 | sed 's/[ \"v,]//g')
+        echo "latest_release=${latest_release}" >> $GITHUB_ENV
         
     - name: Install LLVM
       uses: sbwml/actions@install-llvm
@@ -161,6 +164,7 @@ jobs:
         export CCACHE_DIR="$HOME/.ccache"
         export CCACHE_BASEDIR="$OPENWRT_PATH"
         make tools/install -j$(nproc) || make tools/install -j1 V=s
+        
     - name: Build toolchain # (5) 编译流程拆分第二步
       run: |
         cd $OPENWRT_PATH
@@ -168,6 +172,7 @@ jobs:
         export CCACHE_DIR="$HOME/.ccache"
         export CCACHE_BASEDIR="$OPENWRT_PATH"
         make toolchain/install -j$(nproc) || make toolchain/install -j1 V=s
+        
     - name: Compile Firmware # (6) 编译流程拆分第三步
       id: compile
       run: |
