@@ -87,7 +87,7 @@ jobs:
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
-        max-size: 2G
+        max-size: 5G
                 
     - name: Clone Source Code
       run: |
