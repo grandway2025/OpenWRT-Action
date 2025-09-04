@@ -399,7 +399,8 @@ git clone https://$github/sbwml/feeds_packages_net_aria2 -b 22.03 feeds/packages
 
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
-git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld --depth=1
+# git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld --depth=1
+git clone https://$github/sbwml/openwrt_helloworld package/new/helloworld -b v5 --depth=1
 
 # openlist
 git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
