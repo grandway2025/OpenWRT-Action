@@ -87,7 +87,7 @@ jobs:
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
-        key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
+        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }}
         max-size: 10G
                 
     - name: Clone Source Code
@@ -109,10 +109,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: openwrt/dl
-        key: dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles('feeds.conf.default') }}-${{ hashFiles(env.CONFIG_FILE) }}
+        key: dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
         restore-keys: |
-          dl-${{ runner.os }}-${{ env.REPO_BRANCH }}-
-          dl-${{ runner.os }}-
+          dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
           
     - name: Cache Toolchain
       uses: actions/cache@v4
@@ -120,10 +119,9 @@ jobs:
         path: |
           openwrt/staging_dir/host
           openwrt/staging_dir/toolchain-*
-        key: toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-${{ hashFiles(env.CONFIG_FILE) }}
+        key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
         restore-keys: |
-          toolchain-${{ runner.os }}-${{ env.REPO_BRANCH }}-
-          toolchain-${{ runner.os }}-
+          toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
                              
     - name: Install Caddy Server
       run: |
@@ -154,7 +152,6 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
-        ccache --set-config=max_size=10G
         export LAN=${{ github.event.inputs.lan_addr }}
         export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         # 准备自定义配置
@@ -181,7 +178,7 @@ jobs:
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
         echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
         echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
+        latest_release=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | grep "tag_name" | head -n 1 | cut -d : -f2 | sed 's/[ \"v,]//g')
         echo "latest_release=${latest_release}" >>$GITHUB_ENV
                 
     - name: Install LLVM
