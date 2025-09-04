@@ -87,7 +87,7 @@ jobs:
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ runner.os }}-ccache-${{ github.workflow }}-${{ github.ref }}
-        max-size: 5G
+        max-size: 10G
                 
     - name: Clone Source Code
       run: |
@@ -153,7 +153,7 @@ jobs:
         [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
         [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
         [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
-        ccache --set-config=max_size=2G
+        ccache --set-config=max_size=10G
         export LAN=${{ github.event.inputs.lan_addr }}
         export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
         # 准备自定义配置
