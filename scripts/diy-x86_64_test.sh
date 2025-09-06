@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #=================================================
-#   OpenWrt X86_64 自定义编译脚本
-#   • 统一变量(MIRROR、GITEA、GITHUB)
-#   • set -euo pipefail + 统一错误/日志函数
+#   OpenWrt X86_64 DIY 编译脚本（已优化）
+#   • 统一变量 (MIRROR、GITEA、GITHUB)
+#   • set -euo pipefail + 统一日志/错误函数
 #   • download / apply_patch / clone_pkg 三个通用函数
-#   • 所有第三方包通过关联数组 EXTRAPKS 并行克隆
-#   • 最终把关键变量写入 $GITHUB_ENV 供 workflow 使用
+#   • 全部第三方包放在关联数组 EXTRAPKS 并行克隆
+#   • 最后把关键变量写入 $GITHUB_ENV 供 workflow 使用
 #=================================================
 set -euo pipefail
 IFS=$'\n\t'
@@ -14,7 +14,7 @@ IFS=$'\n\t'
 : "${GITEA:=git.kejizero.online/zhao}"
 : "${GITHUB:=github.com}"
 : "${CLASH_KERNEL:=amd64}"
-KVER=6.6                       # 如需升级内核，只改这里
+KVER=6.6   # 如需升级内核，只改这里
 # ---------- 2️⃣ 日志 / 错误 ----------
 log()    { echo -e "\033[1;34m[INFO]  $*\033[0m"; echo "::group::$*"; }
 log_end(){ echo "::endgroup::"; }
@@ -76,7 +76,7 @@ log "Replace nginx (latest)"
 rm -rf feeds/packages/net/nginx
 git clone "https://${GITHUB}/sbwml/feeds_packages_net_nginx.git" \
           feeds/packages/net/nginx -b openwrt-24.10
-sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/' \
+sed -i '_param stdout 1/procd_set_param stdout 0/' \
        feeds/packages/net/nginx/files/nginx.init
 sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/' \
        feeds/packages/net/nginx/files/nginx.init
@@ -120,6 +120,7 @@ sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' 
        feeds/packages/lang/rust/Makefile
 log_end
 # ---------- 12️⃣ 第三方包 ----------
+log "Clone extra packages (parallel)"
 declare -A EXTRA_PKGS=(
   [nft-fullcone]="https://${GITEA}/nft-fullcone"
   [nat6]="https://${GITEA}/package_new_nat6"
@@ -131,7 +132,6 @@ declare -A EXTRA_PKGS=(
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
   # 如需更多包，直接在这里添加
 )
-log "Clone extra packages (parallel)"
 for pkg in "${!EXTRA_PKGS[@]}"; do
   url=${EXTRA_PKGS[$pkg]}
   repo=$(awk '{print $1}' <<<"$url")
@@ -152,4 +152,4 @@ DEVICE_TARGET=$DEVICE_TARGET
 DEVICE_SUBTARGET=$DEVICE_SUBTARGET
 EOF
 log "DIY script finished ✅"
-exit 0
+exit 0   # 正常退出
