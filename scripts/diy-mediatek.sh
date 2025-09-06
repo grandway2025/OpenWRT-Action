@@ -13,6 +13,13 @@ sed -i 's/ImmortalWrt/OpenWrt/' package/base-files/files/bin/config_generate
 # TTYD 免登录
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
+# 为默认 root 密码进行设置
+if [ -n "$ROOT_PASSWORD" ]; then
+    # sha256 encryption
+    default_password=$(openssl passwd -5 $ROOT_PASSWORD)
+    sed -i "s|^root:[^:]*:|root:${default_password}:|" package/base-files/files/etc/shadow
+fi
+
 # 删除软件依赖
 rm -rf feeds/packages/net/{v2ray-geodata,open-app-filter,shadowsocksr-libev,shadowsocks-rust,shadowsocks-libev}
 rm -rf feeds/packages/net/{tcping,trojan,trojan-plus,tuic-client,v2ray-core,v2ray-plugin,xray-core,xray-plugin,sing-box}
