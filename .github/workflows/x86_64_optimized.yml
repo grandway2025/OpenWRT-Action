@@ -1,6 +1,6 @@
-# .github/workflows/X86_64.yml
+# .github/workflows/x86_64_optimized.yml
 # -------------------------------------------------
-# 统一版 X86_64 OpenWrt 编译工作流
+# 统一版 X86_64 OpenWrt 编译工作流（已修正）
 # -------------------------------------------------
 name: 💻 X86_64_Optimized Build
 on:
@@ -45,15 +45,17 @@ on:
         type: boolean
         default: true
 env:
+  # ----------------------- 基础信息 -----------------------
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   CACHE_VER: v1                     # 变动此值即可强制失效缓存
   CONFIG_FILE: configs/x86_64.config
-  DIY_SCRIPT: scripts/diy-x86_64_test.sh
+  DIY_SCRIPT: scripts/diy-x86_64.sh
   CLASH_KERNEL: amd64
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: X86_64
+  # --------------------- 镜像 & Git 地址 --------------------
   MIRROR: https://mirrors.tuna.tsinghua.edu.cn/openwrt   # 与 diy 脚本保持一致
   GITEA: git.kejizero.online/zhao
   GITHUB: github.com
@@ -62,15 +64,19 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 420   # 7 h
     steps:
+      # -------------------------------------------------
+      # 1️⃣ 基础环境
+      # -------------------------------------------------
       - name: Setup environment
         run: |
           sudo timedatectl set-timezone Asia/Shanghai
           git config --global user.name actions
           git config --global user.email action@github.com
-          
       - name: Free disk space
         uses: sbwml/actions@free-disk
-
+      # -------------------------------------------------
+      # 2️⃣ 代码检出（浅克隆）
+      # -------------------------------------------------
       - name: Checkout OpenWrt source
         uses: actions/checkout@v4
         with:
@@ -78,7 +84,9 @@ jobs:
           ref: ${{ env.REPO_BRANCH }}
           path: openwrt
           fetch-depth: 1      # 只要最新提交
-
+      # -------------------------------------------------
+      # 3️⃣ 收集元信息（commit、日期等）
+      # -------------------------------------------------
       - name: Export repository meta
         id: meta
         run: |
@@ -90,7 +98,9 @@ jobs:
           echo "COMMIT_HASH=$(git rev-parse HEAD)"               >> $GITHUB_ENV
           echo "CURRENT_DATE=$(date +%s)"                        >> $GITHUB_ENV
           echo "SOURCE_REPO=$(basename ${{ env.REPO_URL }})"     >> $GITHUB_ENV
-
+      # -------------------------------------------------
+      # 4️⃣ 缓存：下载文件、toolchain、feeds
+      # -------------------------------------------------
       - name: Cache Downloads
         uses: actions/cache@v4
         with:
@@ -99,7 +109,6 @@ jobs:
           restore-keys: |
             dl-${{ runner.os }}-${{ env.CACHE_VER }}-
             dl-${{ runner.os }}-
-            
       - name: Cache Toolchain
         uses: actions/cache@v4
         with:
@@ -110,7 +119,6 @@ jobs:
           restore-keys: |
             toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-
             toolchain-${{ runner.os }}-
-            
       - name: Cache Feeds
         uses: actions/cache@v4
         with:
@@ -119,20 +127,25 @@ jobs:
           restore-keys: |
             feeds-${{ runner.os }}-${{ env.CACHE_VER }}-
             feeds-${{ runner.os }}-
-
+      # -------------------------------------------------
+      # 5️⃣ ccache
+      # -------------------------------------------------
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}
           max-size: 10G
-          # 开启压缩以节省空间
           compress: true
-
+      # -------------------------------------------------
+      # 6️⃣ 安装 LLVM（锁定到 14，兼容 OpenWrt 24.10）
+      # -------------------------------------------------
       - name: Install LLVM (v14)
         uses: sbwml/actions@install-llvm
         with:
           version: 14
-
+      # -------------------------------------------------
+      # 7️⃣ 安装 feeds（使用自定义 feeds.conf）
+      # -------------------------------------------------
       - name: Install Feeds
         run: |
           cd $OPENWRT_PATH
@@ -140,7 +153,9 @@ jobs:
             https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/feeds/feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-
+      # -------------------------------------------------
+      # 8️⃣ 加载自定义配置 + 运行 diy 脚本
+      # -------------------------------------------------
       - name: Load Custom Configuration
         env:
           ENABLE_DOCKER: ${{ github.event.inputs.docker }}
@@ -155,13 +170,13 @@ jobs:
         run: |
           echo "::group::Load custom configuration"
           cd $OPENWRT_PATH
-          # 把 workflow 根目录下的 files（如果有）搬进源码树
+          # 把根目录下的 files（如有）搬入源码树
           [[ -e ../files ]] && mv ../files ./files
           # 复制基准 .config
           cp ../${CONFIG_FILE} .config
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
-          # 运行 diy 脚本（内部已经处理了所有可选插件）
+          # 运行 diy 脚本（内部已经处理所有可选插件）
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
           # 运行额外的 preset 脚本（保持原有逻辑）
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
@@ -190,7 +205,6 @@ jobs:
           cd $OPENWRT_PATH
           make tools/install -j$(nproc) || make tools/install -j1 V=s
           echo "::endgroup::"
-          
       - name: Build toolchain
         timeout-minutes: 150
         run: |
@@ -198,7 +212,6 @@ jobs:
           cd $OPENWRT_PATH
           make toolchain/install -j$(nproc) || make toolchain/install -j1 V=s
           echo "::endgroup::"
-          
       - name: Compile Firmware
         id: compile
         timeout-minutes: 180
@@ -213,11 +226,12 @@ jobs:
           echo "FILE_DATE=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
           echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
           echo "::endgroup::"
-
+      # -------------------------------------------------
+      # 10️⃣ 检查磁盘 & 打包产物
+      # -------------------------------------------------
       - name: Check space usage
         if: always()
         run: df -hT
-        
       - name: Organise files
         if: steps.compile.outputs.status == 'success'
         run: |
@@ -231,26 +245,30 @@ jobs:
           rm -rf packages feeds.buildinfo version.buildinfo kernel
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "::endgroup::"
-
+      # -------------------------------------------------
+      # 11️⃣ 上传制品（可选 Bin 目录、固件）
+      # -------------------------------------------------
       - name: Upload Bin Directory (optional)
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.OPENWRT_PATH }}/bin
-          
       - name: Upload Firmware to Artifact (when not releasing)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.SOURCE_REPO }}firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+          name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
-
+      # -------------------------------------------------
+      # 12️⃣ 发布 Release
+      # -------------------------------------------------
       - name: Upload Firmware to Release
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
         with:
           name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
+          # 让每次发布都有唯一的 tag（加入时间戳）
           tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
@@ -258,7 +276,7 @@ jobs:
           body: |
             **This is OpenWrt Firmware**
             ### 📒 固件信息
-            - 💻 平台架构: ${{ envVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+            - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
             - ⚽ 固件源码: ${{ env.REPO_URL }}
             - 💝 源码分支: ${{ env.REPO_BRANCH }}
             - 🚀 内核版本: ${{ env.KERNEL }}
