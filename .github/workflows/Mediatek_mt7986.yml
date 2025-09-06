@@ -53,10 +53,10 @@ jobs:
       uses: actions/checkout@main
 
     - name: Setup ccache
-    uses: hendrikmuhs/ccache-action@v1.2
-    with:
-      key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }} # <-- 已添加 CACHE_VER
-      max-size: 10G
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }} # <-- 已添加 CACHE_VER
+        max-size: 10G
         
     - name: Clone Source Code
       run: |
