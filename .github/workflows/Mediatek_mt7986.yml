@@ -31,6 +31,7 @@ env:
   REPO_BRANCH: openwrt-24.10-6.6
   CONFIG_FILE: configs/mediatek_mt7986.config
   DIY_SCRIPT: scripts/diy-mediatek.sh
+  CACHE_VER: v1
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: Mediatek_mt7986
