@@ -402,6 +402,10 @@ git clone https://$github/sbwml/openwrt_helloworld package/new/helloworld -b v5 
 # openlist
 git clone https://$github/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
+# unzip
+rm -rf feeds/packages/utils/unzip
+git clone https://$github/sbwml/feeds_packages_utils_unzip feeds/packages/utils/unzip
+
 # luci-app-sqm
 rm -rf feeds/luci/applications/luci-app-sqm
 # git clone https://$gitea/luci-app-sqm feeds/luci/applications/luci-app-sqm --depth=1
@@ -460,7 +464,7 @@ mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf 
 # lucky
 git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky --depth=1
 
-# custom packages pkgs
+# custom packages
 rm -rf feeds/packages/utils/coremark
 git clone https://$github/sbwml/openwrt_pkgs package/new/custom --depth=1
 rm -rf package/new/custom/luci-app-adguardhome
