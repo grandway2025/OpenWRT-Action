@@ -53,12 +53,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Build System Setup
-      uses: sbwml/actions@openwrt-build-setup
-
-    - name: Install LLVM
-      uses: sbwml/actions@install-llvm
-                
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }}
+        max-size: 10G
+        
     - name: Clone Source Code
       run: |
         df -hT $GITHUB_WORKSPACE
@@ -75,26 +75,27 @@ jobs:
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
         
-    - name: Generate Variables
-      run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-
-    - name: Cache Toolchain
-      if: env.CACHE_TOOLCHAIN == 'true'
-      uses: HiGarfield/cachewrtbuild@main
+    - name: Cache Downloads
+      uses: actions/cache@v4
       with:
-        ccache: false
-        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-        prefix: ${{ env.OPENWRT_PATH }}
-        
+        path: openwrt/dl
+        key: dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+        restore-keys: |
+          dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+          
+    - name: Cache Toolchain
+      uses: actions/cache@v4
+      with:
+        path: |
+          openwrt/staging_dir/host
+          openwrt/staging_dir/toolchain-*
+        key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+        restore-keys: |
+          toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
+          
+    - name: Build System Setup
+      uses: sbwml/actions@openwrt-build-setup
+                
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
@@ -105,18 +106,34 @@ jobs:
       run: |
         export LAN=${{ github.event.inputs.lan_addr }}
         export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
+        # 准备自定义配置
         cd $OPENWRT_PATH
         [ -e ../files ] && mv ../files ./files
         cp ../$CONFIG_FILE ./.config
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
+        
         # 运行自定义脚本
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+        
+        # 生成最终的 .config 文件
+        make defconfig
+        
+        # 在 .config 文件最终确定后，生成其他环境变量
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
         echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
         echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
         
+    - name: Install LLVM
+      uses: sbwml/actions@install-llvm
+      
     - name: Compile Firmware
       id: compile
       run: |
