@@ -71,6 +71,7 @@ git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/l
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
 git clone -b openwrt-24.10 https://github.com/grandway2025/helloworld package/new/helloworld
+rm -rf package/new/helloworld dns2socks-rust
 
 # lucky
 git clone https://github.com/gdy666/luci-app-lucky.git package/new/lucky
