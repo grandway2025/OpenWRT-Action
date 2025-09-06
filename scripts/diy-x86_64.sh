@@ -72,7 +72,7 @@ sed -i 's/;)\s*\\/; \\/' include/feeds.mk
 
 # nginx - latest version
 rm -rf feeds/packages/net/nginx
-git clone https://$github/oppen321/feeds_packages_net_nginx -b openwrt-24.10 feeds/packages/net/nginx
+git clone https://$github/sbwml/feeds_packages_net_nginx feeds/packages/net/nginx -b openwrt-24.10
 sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/g;s/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/net/nginx/files/nginx.init
 
 # nginx - ubus
@@ -372,10 +372,7 @@ popd
 
 # samba4 - bump version
 rm -rf feeds/packages/net/samba4
-git clone https://$github/sbwml/feeds_packages_net_samba4 feeds/packages/net/samba4 --depth=1
-# liburing - 2.7 (samba-4.21.0)
-rm -rf feeds/packages/libs/liburing
-git clone https://$github/sbwml/feeds_packages_libs_liburing feeds/packages/libs/liburing --depth=1
+git clone https://$github/sbwml/feeds_packages_net_samba4 feeds/packages/net/samba4
 # enable multi-channel
 sed -i '/workgroup/a \\n\t## enable multi-channel' feeds/packages/net/samba4/files/smb.conf.template
 sed -i '/enable multi-channel/a \\tserver multi channel support = yes' feeds/packages/net/samba4/files/smb.conf.template
