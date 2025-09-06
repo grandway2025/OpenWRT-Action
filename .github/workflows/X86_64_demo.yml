@@ -30,35 +30,11 @@ on:
         description: '编绎 Docker '
         type: boolean
         default: true
-      ssrp:
-        description: '编绎 ShadowSocksR Plus+ '
-        type: boolean
-        default: true
-      passwall:
-        description: '编绎 passwall '
-        type: boolean
-        default: true
-      nikki:
-        description: '编绎 Nikki '
-        type: boolean
-        default: true
-      openclash:
-        description: '编绎 OpenClash '
-        type: boolean
-        default: true
-      lucky:
-        description: '编绎 Lucky '
-        type: boolean
-        default: true
-      oaf:
-        description: '编绎 OpenAppFilter '
-        type: boolean
-        default: true
                
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
-  CONFIG_FILE: configs/x86_64.config
+  CONFIG_FILE: configs/x86_64_demo.config
   DIY_SCRIPT: scripts/diy-x86_64.sh
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
