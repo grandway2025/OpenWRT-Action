@@ -170,13 +170,13 @@ jobs:
         run: |
           echo "::group::Load custom configuration"
           cd $OPENWRT_PATH
-          # 把根目录下的 files（如有）搬入源码树
+          # 如果仓库根目录有 files 目录，搬入源码树
           [[ -e ../files ]] && mv ../files ./files
           # 复制基准 .config
           cp ../${CONFIG_FILE} .config
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
-          # 运行 diy 脚本（内部已经处理所有可选插件）
+          # 运行 diy 脚本（内部已处理所有插件开关）
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
           # 运行额外的 preset 脚本（保持原有逻辑）
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
@@ -191,7 +191,7 @@ jobs:
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
           echo "IP_ADDR=$LAN"               >> $GITHUB_ENV
           echo "ROOT_PASSWORD=$ROOT_PASSWORD" >> $GITHUB_ENV
-          # 通过 GitHub API 取得 OpenWrt 官方最新 release（一次请求）
+          # 通过 GitHub API 获取 OpenWrt 官方最新 release（一次请求）
           latest_release=$(curl -fsSL "https://api.github.com/repos/${SOURCE_REPO}/releases/latest" \
             | jq -r .tag_name | sed 's/^v//')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
@@ -268,7 +268,7 @@ jobs:
         uses: ncipollo/release-action@v1.14.0
         with:
           name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
-          # 让每次发布都有唯一的 tag（加入时间戳）
+          # 为每一次 CI 生成唯一 tag（加入时间戳）
           tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
