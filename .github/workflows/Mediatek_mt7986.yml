@@ -31,7 +31,6 @@ env:
   REPO_BRANCH: openwrt-24.10-6.6
   CONFIG_FILE: configs/mediatek_mt7986.config
   DIY_SCRIPT: scripts/diy-mediatek.sh
-  CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: Mediatek_mt7986
@@ -54,15 +53,15 @@ jobs:
       uses: actions/checkout@main
 
     - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }}
-        max-size: 10G
+    uses: hendrikmuhs/ccache-action@v1.2
+    with:
+      key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }} # <-- 已添加 CACHE_VER
+      max-size: 10G
         
     - name: Clone Source Code
       run: |
         df -hT $GITHUB_WORKSPACE
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
@@ -169,7 +168,8 @@ jobs:
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         
-    - name: Upload Firmware To Artifact
+    - name: name: Upload Firmware To Artifact (if not releasing)
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
