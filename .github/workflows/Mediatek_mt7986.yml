@@ -19,7 +19,12 @@ on:
         description: 'Setting default LAN address'
         required: true
         default: '192.168.1.10'
-        type: string 
+        type: string
+      root_password:
+        description: '设置默认 root 密码（可选，默认password）'
+        required: false
+        default: 'password'
+        type: string
 
 env:
   REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
