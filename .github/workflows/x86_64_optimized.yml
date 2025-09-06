@@ -49,7 +49,7 @@ env:
   REPO_BRANCH: openwrt-24.10
   CACHE_VER: v1                # ★ 记得在这里写版本号，变更后会自动失效缓存
   CONFIG_FILE: configs/x86_64.config
-  DIY_SCRIPT: scripts/diy-x86_64.sh
+  DIY_SCRIPT: scripts/diy-x86_64_test.sh
   CLASH_KERNEL: amd64
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
