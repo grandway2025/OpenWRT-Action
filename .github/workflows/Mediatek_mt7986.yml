@@ -1,202 +1,156 @@
-#=================================================
-# https://github.com/P3TERX/Actions-OpenWrt
-# Description: Build OpenWrt using GitHub Actions
-# Lisence: MIT
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
-
-name: 🛜 Mediatek_mt7986
-
-on:
-  workflow_dispatch:
-  # schedule:
-    # - cron: 0 17 * * *
-  # watch:
-  #   types: started
-     inputs:
-      lan_addr:
-        description: 'Setting default LAN address'
-        required: true
-        default: '192.168.1.10'
-        type: string
-      root_password:
-        description: '设置默认 root 密码（可选，默认password）'
-        required: false
-        default: 'password'
-        type: string
-
-env:
-  REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
-  REPO_BRANCH: openwrt-24.10-6.6
-  CONFIG_FILE: configs/mediatek_mt7986.config
-  DIY_SCRIPT: scripts/diy-mediatek.sh
-  CACHE_VER: v1
-  UPLOAD_BIN_DIR: false
-  FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: Mediatek_mt7986
-  
-jobs:
-  build:
-    runs-on: ubuntu-24.04
-
-    steps: 
-    - name: Setup variables
-      run: |
-        sudo timedatectl set-timezone 'Asia/Shanghai'
-        git config --global user.name 'actions'
-        git config --global user.email 'action@github.com'
-                
-    - name: Free disk space
-      uses: sbwml/actions@free-disk
-
-    - name: Checkout
-      uses: actions/checkout@main
-
-    - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}-${{ github.workflow }} # <-- 已添加 CACHE_VER
-        max-size: 10G
-        
-    - name: Clone Source Code
-      run: |
-        df -hT $GITHUB_WORKSPACE
-        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
-        cd openwrt
-        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
-        echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
-        COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")
-        echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
-        COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")
-        echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-        COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
-        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
-        echo "CURRENT_DATE=$(date +%s)" >> $GITHUB_ENV
-        
-    - name: Cache Downloads
-      uses: actions/cache@v4
-      with:
-        path: openwrt/dl
-        key: dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
-        restore-keys: |
-          dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
-          
-    - name: Cache Toolchain
-      uses: actions/cache@v4
-      with:
-        path: |
-          openwrt/staging_dir/host
-          openwrt/staging_dir/toolchain-*
-        key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
-        restore-keys: |
-          toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
-          
-    - name: Build System Setup
-      uses: sbwml/actions@openwrt-build-setup
-                
-    - name: Install Feeds
-      run: |
-        cd $OPENWRT_PATH
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-        
-    - name: Load Custom Configuration
-      run: |
-        export LAN=${{ github.event.inputs.lan_addr }}
-        export ROOT_PASSWORD=${{ github.event.inputs.root_password }}
-        # 准备自定义配置
-        cd $OPENWRT_PATH
-        [ -e ../files ] && mv ../files ./files
-        cp ../$CONFIG_FILE ./.config
-        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-        chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
-        
-        # 运行自定义脚本
-        $GITHUB_WORKSPACE/$DIY_SCRIPT
-        $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
-        $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
-        
-        # 生成最终的 .config 文件
-        make defconfig
-        
-        # 在 .config 文件最终确定后，生成其他环境变量
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
-        echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-        
-    - name: Install LLVM
-      uses: sbwml/actions@install-llvm
-      
-    - name: Compile Firmware
-      id: compile
-      run: |
-        cd $OPENWRT_PATH
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
-        echo "TAG_TIME=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
-        
-    - name: Check Space Usage
-      if: (!cancelled())
-      run: df -hT
-        
-    - name: Upload Bin Directory
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      uses: actions/upload-artifact@main
-      with:
-        name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
-        path: ${{ env.OPENWRT_PATH }}/bin
-        
-    - name: Organize Files
-      if: steps.compile.outputs.status == 'success'
-      run: |
-        cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums
-        cp $OPENWRT_PATH/.config build.config
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-        tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo profiles.json build.config config.buildinfo 
-        rm -rf mt7981-ram-ddr3-bl2.bin mt7981-ram-ddr4-bl2.bin mt7986-ram-ddr3-bl2.bin mt7986-ram-ddr4-bl2.bin mt7988-ram-comb-bl2.bin 
-        echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-        
-    - name: Upload Firmware To Artifact (if not releasing)
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE_PATH }}
-
-    - name: Upload Firmware To Release
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-      uses: ncipollo/release-action@v1.14.0
-      with:
-        name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}
-        allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/*
-        body: |
-          **This is OpenWrt Firmware**
-          ### 📒 固件信息
-          - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-          - ⚽ 固件源码: ${{ env.REPO_URL }}
-          - 💝 源码分支: ${{ env.REPO_BRANCH }}
-          - 🚀 内核版本: ${{ env.KERNEL }}
-          - 🌐 默认地址: ${{ env.IP_ADDR }}
-          - 🔑 默认密码: ${{ env.ROOT_PASSWORD }}
-          ### 🧊 固件版本
-          - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-          - ${{ env.COMMIT_AUTHOR }}
-          - ${{ env.COMMIT_DATE }}
-          - ${{ env.COMMIT_MESSAGE }}
-          - ${{ env.COMMIT_HASH }}
+#!/usr/bin/env bash
+#================================================================
+#  OpenWrt Mediatek (mt7986) DIY 脚本
+#  1. 统一变量 & 错误/日志函数
+#  2. 合并并行处理的第三方包
+#  3. 通过 env 传递关键变量给 workflow
+#================================================================
+set -euo pipefail
+IFS=$'\n\t'
+# ==================== 1️⃣ 全局变量 ====================
+: "${MIRROR:=https://mirrors.tuna.tsinghua.edu.cn/openwrt}"
+: "${GITEA:=git.kejizero.online/zhao}"
+: "${GITHUB:=github.com}"
+: "${CLASH_KERNEL:=amd64}"
+: "${LAN:=192.168.1.1}"               # 默认值，workflow 会覆盖
+: "${ROOT_PASSWORD:=}"                # workflow 会覆盖
+# ==================== 2️⃣ 日志 & 错误 ====================
+log()    { echo -e "\033[1;34m[INFO]  $*\033[0m"; echo "::group::$*"; }
+log_end(){ echo "::endgroup::"; }
+err()    { echo -e "\033[1;31m[ERROR] $*\033[0m" >&2; echo "::error::$*"; exit 1; }
+# ==================== 3️⃣ 通用函数 ====================
+download() {
+  local url=$1 dst=$2
+  curl -fsSL --retry 3 --retry-delay 5 "$url" -o "$dst" \
+    || err "download failed: $url"
+  [[ -s "$dst" ]] || err "download produced empty file: $dst"
+}
+clone_pkg() {
+  local repo=$1 dst=$2 branch=$3
+  if [[ -n $branch ]]; then
+    git clone --depth=1 -b "$branch" "$repo" "$dst" \
+      || err "clone $repo (branch $branch) failed"
+  else
+    git clone --depth=1 "$repo" "$dst" \
+      || err "clone $repo failed"
+  fi
+}
+# ==================== 4️⃣ 基础配置（IP、名称、ttyd） ====================
+log "基础配置：IP、默认名称、ttyd免登录"
+sed -i -e "s/192\\.168\\.6\\.1/${LAN}/" \
+       -e "s/ImmortalWrt/OpenWrt/" \
+       -e "s|/bin/login|/bin/login -f root|g" \
+       package/base-files/files/bin/config_generate
+log_end
+# ==================== 5️⃣ Root 密码 ====================
+if [[ -n "${ROOT_PASSWORD:-}" ]]; then
+  log "设置 root 密码"
+  ROOT_HASH=$(openssl passwd -5 "$ROOT_PASSWORD")
+  sed -i "s|^root:[^:]*:|root:${ROOT_HASH}:|" \
+    package/base-files/files/etc/shadow
+  log_end
+fi
+# ==================== 6️⃣ 删除不需要的 feed 包 ====================
+log "删除多余的网络/luCI包"
+rm -rf feeds/packages/net/{v2ray-geodata,open-app-filter,shadowsocksr-libev,shadowsocks-rust,shadowsocks-libev,\
+tcping,trojan,trojan-plus,tuic-client,v2ray-core,v2ray-plugin,xray-core,xray-plugin,\
+sing-box,chinadns-ng,hysteria,mosdns,lucky,ddns-go,v2dat,golang}
+rm -rf feeds/luci/applications/{luci-app-daed,luci-app-dae,luci-app-homeproxy,luci-app-openclash,\
+luci-app-passwall,luci-app-passwall2,luci-app-ssr-plus,luci-app-vssr,\
+luci-app-appfilter,luci-app-ddns-go,luci-app-lucky,luci-app-mosdns,\
+luci-app-alist,luci-app-openlist,luci-app-airwhu}
+log_end
+# ==================== 7️⃣ 固件信息 ====================
+log "写入固件自定义信息"
+sed -i -e "s/DISTRIB_DESCRIPTION='.*'/DISTRIB_DESCRIPTION='OpenWrt-$(date +%Y%m%d)'/" \
+       -e "s/DISTRIB_REVISION='.*'/DISTRIB_REVISION=' By grandway2025'/" \
+       package/base-files/files/etc/openwrt_release
+sed -i "s|^OPENWRT_RELEASE=\".*\"|OPENWRT_RELEASE=\"OpenWrt定制版\"|" \
+       package/base-files/files/usr/lib/os-release
+log_end
+# ==================== 8️⃣ 主题（argon） ====================
+log "替换 Argon 主题"
+rm -rf feeds/luci/themes/luci-theme-argon
+git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
+log_end
+# ==================== 9️⃣ Golang 1.25 ====================
+log "升级 Golang 至 1.25"
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+log_end
+# ==================== 10️⃣ 第三方扩展包（并行） ====================
+log "并行克隆第三方插件"
+declare -A EXTRA_PKGS=(
+  [helloworld]="https://${GITHUB}/grandway2025/helloworld -b openwrt-24.10"
+  [lucky]="https://${GITHUB}/gdy666/luci-app-lucky"
+  [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns -b v5"
+  [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
+  [luci-app-taskplan]="https://${GITHUB}/sirpdboy/luci-app-taskplan"
+  [luci-app-webdav]="https://${GITHUB}/sbwml/luci-app-webdav -b openwrt-24.10"
+  [quickfile]="https://${GITHUB}/sbwml/luci-app-quickfile"
+  [openlist]="https://${GITHUB}/sbwml/luci-app-openlist2"
+  [socat]="https://${GITHUB}/zhiern/luci-app-socat"
+  [adguardhome]="https://git.kejizero.online/zhao/luci-app-adguardhome"
+  # 如需继续添加请直接在这里补充
+)
+for name in "${!EXTRA_PKGS[@]}"; do
+  url=${EXTRA_PKGS[$name]}
+  repo=$(awk '{print $1}' <<<"$url")
+  branch=$(awk '{print $2}' <<<"$url")
+  dest="package/new/$name"
+  if [[ -n $branch ]]; then
+    clone_pkg "$repo" "$dest" "$branch" &
+  else
+    clone_pkg "$repo" "$dest" "" &
+  fi
+done
+wait
+log_end
+# ==================== 11️⃣ AdGuardHome 二进制 ====================
+log "下载 AdGuardHome 二进制"
+AGH_URL=$(curl -fsSL "https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest" \
+          | jq -r '.assets[]|select(.name|endswith("_linux_arm64.tar.gz")).browser_download_url')
+curl -fsSL "$AGH_URL" -o /tmp/agh.tar.gz
+tar -xzf /tmp/agh.tar.gz -C files/usr/bin --strip-components=1 AdGuardHome/AdGuardHome
+chmod +x files/usr/bin/AdGuardHome
+log_end
+# ==================== 12️⃣ OpenClash 二进制 ====================
+log "下载 OpenClash 内核"
+CLASH_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-arm64.tar.gz"
+GEOIP_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
+GEOSITE_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
+mkdir -p files/etc/openclash/core
+curl -fsSL "$CLASH_URL" | tar -xz -C files/etc/openclash/core --strip-components=1 clash
+curl -fsSL "$GEOIP_URL" -o files/etc/openclash/GeoIP.dat
+curl -fsSL "$GEOSITE_URL" -o files/etc/openclash/GeoSite.dat
+chmod +x files/etc/openclash/core/clash*
+log_end
+# ==================== 13️⃣ Docker utils ====================
+log "重新拉取 docker utils"
+rm -rf feeds/luci/applications/luci-app-dockerman
+git clone https://github.com/sirpdboy/luci-app-dockerman.git package/new/dockerman --depth=1
+mv -n package/new/dockerman/luci-app-dockerman feeds/luci/applications && rm -rf package/new/dockerman
+rm -rf feeds/packages/utils/{docker,dockerd,containerd,runc}
+git clone https://github.com/sbwml/packages_utils_docker feeds/packages/utils/docker --depth=1
+git clone https://github.com/sbwml/packages_utils_dockerd feeds/packages/utils/dockerd --depth=1
+git clone https://github.com/sbwml/packages_utils_containerd feeds/packages/utils/containerd --depth=1
+git clone https://github.com/sbwml/packages_utils_runc feeds/packages/utils/runc --depth=1
+log_end
+# ==================== 14️⃣ default-settings ====================
+log "拉取自定义 default‑settings"
+git clone -b mediatek https://github.com/grandway2025/default-settings \
+          package/new/default-settings --depth=1
+log_end
+# ==================== 15️⃣ 生成 final .config ====================
+log "调用 make defconfig 生成最终 .config"
+make defconfig
+log_end
+# ==================== 16️⃣ 导出关键变量供 workflow 使用 ====================
+DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'"' -f2)
+DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'"' -f2)
+cat <<EOF >> "$GITHUB_ENV"
+DEVICE_TARGET=$DEVICE_TARGET
+DEVICE_SUBTARGET=$DEVICE_SUBTARGET
+EOF
+log "DIY 脚本执行完毕 ✅"
+exit 0
