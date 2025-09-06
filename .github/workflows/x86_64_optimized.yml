@@ -138,7 +138,7 @@ jobs:
           compress: true
 
       - name: Checkout
-      uses: actions/checkout@main
+        uses: actions/checkout@main
       
       # -------------------------------------------------
       # 6️⃣ 安装 LLVM（锁定到 14，兼容 OpenWrt 24.10）
