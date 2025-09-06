@@ -14,10 +14,16 @@ on:
     # - cron: 0 17 * * *
   # watch:
   #   types: started
+     inputs:
+      lan_addr:
+        description: 'Setting default LAN address'
+        required: true
+        default: '192.168.1.10'
+        type: string 
 
 env:
-  REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x
-  REPO_BRANCH: openwrt-21.02
+  REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
+  REPO_BRANCH: openwrt-24.10-6.6
   CONFIG_FILE: configs/mediatek_mt7986.config
   DIY_SCRIPT: scripts/diy-mediatek.sh
   CACHE_TOOLCHAIN: true
@@ -101,16 +107,15 @@ jobs:
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
-        sed -i "1isrc-git extraipk https://github.com/xiangfeidexiaohuo/extra-ipk\n" feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         
     - name: Load Custom Configuration
       run: |
-        export GITEA_USERTNAME=${{ secrets.GITEA_USERTNAME }}
-        export GITEA_PASSWORD=${{ secrets.GITEA_PASSWORD }}
+        export LAN=${{ github.event.inputs.lan_addr }}
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         chmod +x $DIY_SCRIPT
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
@@ -127,9 +132,12 @@ jobs:
         cd $OPENWRT_PATH
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
+        sed -n 's/.*lan) ipad=${ipaddr:-"\([0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\)"} ;;.*/\1/p' package/base-files/files/bin/config_generate | head -n 1 > IP_ADDR
+        [ -s IP_ADDR ] && echo "IP_ADDR=$(cat IP_ADDR)" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+        echo "FILE_DATE=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
+        echo "TAG_TIME=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
         
     - name: Check Space Usage
       if: (!cancelled())
@@ -150,13 +158,13 @@ jobs:
         cp $OPENWRT_PATH/.config build.config
         mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
         tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
+        rm -rf packages feeds.buildinfo version.buildinfo profiles.json build.config config.buildinfo 
+        rm -rf mt7981-ram-ddr3-bl2.bin mt7981-ram-ddr4-bl2.bin mt7986-ram-ddr3-bl2.bin mt7986-ram-ddr4-bl2.bin mt7988-ram-comb-bl2.bin 
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         
     - name: Upload Firmware To Artifact
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
@@ -165,7 +173,7 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1.14.0
       with:
-        name: ${{ env.FIRMWARE_TAG }}
+        name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}
         allowUpdates: true
         tag: ${{ env.FIRMWARE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -177,7 +185,7 @@ jobs:
           - ⚽ 固件源码: ${{ env.REPO_URL }}
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
           - 🚀 内核版本: ${{ env.KERNEL }}
-          - 🌐 默认地址: 10.0.0.1
+          - 🌐 默认地址: ${{ env.IP_ADDR }}
           - 🔑 默认密码: password
           ### 🧊 固件版本
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
