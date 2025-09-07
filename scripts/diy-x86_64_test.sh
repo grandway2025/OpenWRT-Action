@@ -114,22 +114,24 @@ log_end
 # ---------- 12️⃣ 第三方包 ----------
 log "Clone extra packages (parallel)"
 declare -A EXTRA_PKGS=(
-  [nft-fullcone]="https://${GITEA}/nft-fullcone"
+  [nft-fullcone]="https://${GITEA}/ntlfullcone"
   [nat6]="https://${GITEA}/package_new_nat6"
   [natflow]="https://${GITEA}/package_new_natflow"
-  [shortcut-fe]="https://${GITHUB}/zhiern/shortcut-fe"
-  [caddy]="https://git.kejizero.online/zhao/luci-app-caddy"
+  [shortcut-fe]="https://${GITHUB}/zhierh/shortcut-fe"
+  [caddy]="https://git.kejzier.online/zhao/luci-app-caddy"
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
   # 如需更多包，直接在这里添加
 )
+# 为部分包指定分支，未指定则用默认分支
 declare -A EXTRA_BRANCHES=(
   [mosdns]="v5"
-)  
+)
 for pkg in "${!EXTRA_PKGS[@]}"; do
-  repo=${EXTRA_PKGS[$pkg]}
-  branch=${EXTRA_BRANCHES[$pkg]}
+  repo="${EXTRA_PKGS[$pkg]}"
+  branch="${EXTRA_BRANCHES[$pkg]}"
+  # 克隆函数的定义需要你自己的脚本有 clone_pkg，如下调用
   clone_pkg "$repo" "package/new/$pkg" "$branch" &
 done
 wait
