@@ -158,6 +158,7 @@ jobs:
           chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
+          chmod +x $DIY_SCRIPT
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
           # 选用你的预设脚本（如需可保留）
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
