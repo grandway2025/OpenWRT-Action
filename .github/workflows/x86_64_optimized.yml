@@ -133,47 +133,47 @@ jobs:
           ./scripts/feeds install -a
       - name: Load Custom Configuration
         env:
-          ENABLE_DOCKER: ${{ github.event.inputs.docker }}
-          ENABLE_SSRP: ${{ github.event.inputs.ssrp }}
-          ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
-          ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
-          ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
-          ENABLE_LUCKY: ${{ github.event.inputs.lucky }}
-          ENABLE_OAF: ${{ github.event.inputs.oaf }}
-          LAN: ${{ github.event.inputs.lan_addr }}
-          ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
+          ENABLE_DOCKER:     ${{ github.event.inputs.docker }}
+          ENABLE_SSRP:       ${{ github.event.inputs.ssrp }}
+          ENABLE_PASSWALL:   ${{ github.event.inputs.passwall }}
+          ENABLE_NIKKI:      ${{ github.event.inputs.nikki }}
+          ENABLE_OPENCLASH:  ${{ github.event.inputs.openclash }}
+          ENABLE_LUCKY:      ${{ github.event.inputs.lucky }}
+          ENABLE_OAF:        ${{ github.event.inputs.oaf }}
+          LAN:               ${{ github.event.inputs.lan_addr }}
+          ROOT_PASSWORD:     ${{ github.event.inputs.root_password }}
         run: |
           echo "::group::Load custom configuration"
+          # 切换到 openwrt 源码目录
           cd $OPENWRT_PATH
-          # 主仓库的配置 .config
-          cp ../${CONFIG_FILE} .config
-          # 按 workflow 用户 input 加载本地 configs（确保这些文件都在主仓库 configs/）
-          [[ "${ENABLE_DOCKER}" == "true"     && -f ../configs/config-docker    ]] && cat ../configs/config-docker    >> .config
-          [[ "${ENABLE_SSRP}" == "true"       && -f ../configs/config-ssrp      ]] && cat ../configs/config-ssrp      >> .config
-          [[ "${ENABLE_PASSWALL}" == "true"   && -f ../configs/config-passwall  ]] && cat ../configs/config-passwall  >> .config
-          [[ "${ENABLE_NIKKI}" == "true"      && -f ../configs/config-nikki     ]] && cat ../configs/config-nikki     >> .config
-          [[ "${ENABLE_OPENCLASH}" == "true"  && -f ../configs/config-openclash ]] && cat ../configs/config-openclash >> .config
-          [[ "${ENABLE_LUCKY}" == "true"      && -f ../configs/config-lucky     ]] && cat ../configs/config-lucky     >> .config
-          [[ "${ENABLE_OAF}" == "true"        && -f ../configs/config-oaf       ]] && cat ../configs/config-oaf       >> .config
-          chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
+          # 复制主仓库 configs 到源码目录
+          cp $GITHUB_WORKSPACE/${CONFIG_FILE} .config
+          # 按需追加功能组件 config（源文件都在主仓库 configs/）
+          [[ "${ENABLE_DOCKER}"     == "true" && -f $GITHUB_WORKSPACE/configs/config-docker    ]] && cat $GITHUB_WORKSPACE/configs/config-docker    >> .config
+          [[ "${ENABLE_SSRP}"       == "true" && -f $GITHUB_WORKSPACE/configs/config-ssrp      ]] && cat $GITHUB_WORKSPACE/configs/config-ssrp      >> .config
+          [[ "${ENABLE_PASSWALL}"   == "true" && -f $GITHUB_WORKSPACE/configs/config-passwall  ]] && cat $GITHUB_WORKSPACE/configs/config-passwall  >> .config
+          [[ "${ENABLE_NIKKI}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-nikki     ]] && cat $GITHUB_WORKSPACE/configs/config-nikki     >> .config
+          [[ "${ENABLE_OPENCLASH}"  == "true" && -f $GITHUB_WORKSPACE/configs/config-openclash ]] && cat $GITHUB_WORKSPACE/configs/config-openclash >> .config
+          [[ "${ENABLE_LUCKY}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-lucky     ]] && cat $GITHUB_WORKSPACE/configs/config-lucky     >> .config
+          [[ "${ENABLE_OAF}"        == "true" && -f $GITHUB_WORKSPACE/configs/config-oaf       ]] && cat $GITHUB_WORKSPACE/configs/config-oaf       >> .config
+          # 设置主仓库下所有自定义脚本可执行权限
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-          chmod +x $GITHUB_WORKSPACE/$DIY_SCRIPT
-          chmod +x $DIY_SCRIPT
+          # 执行自定义 DIY 脚本（绝对路径调度，变量名也兼容）
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
-          # 选用你的预设脚本（如需可保留）
+          # 按需执行额外脚本（如 mihimo core/adguard core）
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
           $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+          # 生成最终 .config
           make defconfig
-          echo "::endgroup::"
-          DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'"' -f2)
-          DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'"' -f2)
-          echo "DEVICE_TARGET=$DEVICE_TARGET"   >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          echo "IP_ADDR=$LAN"               >> $GITHUB_ENV
-          echo "ROOT_PASSWORD=$ROOT_PASSWORD" >> $GITHUB_ENV
-          latest_release=$(curl -fsSL "https://api.github.com/repos/${SOURCE_REPO}/releases/latest" \
-            | jq -r .tag_name | sed 's/^v//')
+          # 输出环境变量给后续 job
+          echo "DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'\"' -f2)"         >> $GITHUB_ENV
+          echo "DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'\"' -f2)"   >> $GITHUB_ENV
+          echo "IP_ADDR=${LAN}"              >> $GITHUB_ENV
+          echo "ROOT_PASSWORD=${ROOT_PASSWORD}"  >> $GITHUB_ENV
+          # 获取 OpenWrt 上游最新 tag
+          latest_release=$(curl -fsSL "https://api.github.com/repos/${SOURCE_REPO}/releases/latest" | jq -r .tag_name | sed 's/^v//')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
+          echo "::endgroup::"
       - name: Build tools
         timeout-minutes: 120
         run: |
