@@ -119,15 +119,17 @@ declare -A EXTRA_PKGS=(
   [natflow]="https://${GITEA}/package_new_natflow"
   [shortcut-fe]="https://${GITHUB}/zhiern/shortcut-fe"
   [caddy]="https://git.kejizero.online/zhao/luci-app-caddy"
-  [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns -b v5"
+  [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
   # 如需更多包，直接在这里添加
 )
+declare -A EXTRA_BRANCHES=(
+  [mosdns]="v5"
+)  
 for pkg in "${!EXTRA_PKGS[@]}"; do
-  url=${EXTRA_PKGS[$pkg]}
-  repo=$(awk '{print $1}' <<<"$url")
-  branch=$(awk '{print $2}' <<<"$url")
+  repo=${EXTRA_PKGS[$pkg]}
+  branch=${EXTRA_BRANCHES[$pkg]}
   clone_pkg "$repo" "package/new/$pkg" "$branch" &
 done
 wait
