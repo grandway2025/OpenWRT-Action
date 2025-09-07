@@ -7,6 +7,7 @@ IFS=$'\n\t'
 # ---------- 1️⃣ 全局变量 ----------
 : "${MIRROR:=https://raw.githubusercontent.com/grandway2025/OpenWRT-Action/main}"
 : "${GITEA:=git.kejizero.online/zhao}"
+: "${GITEA:=}"  
 : "${GITHUB:=github.com}"
 : "${CLASH_KERNEL:=amd64}"
 KVER=6.6   # 如需升级内核，只改这里
