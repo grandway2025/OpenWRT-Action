@@ -111,14 +111,27 @@ log "Disable rust llvm download"
 sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' \
        feeds/packages/lang/rust/Makefile
 log_end
+
+# FullCone module
+git clone https://$gitea/zhao/nft-fullcone package/new/nft-fullcone
+
+# IPv6 NAT
+git clone https://$github/sbwml/packages_new_nat6 package/new/nat6
+
+# Natflow
+git clone https://$github/sbwml/package_new_natflow package/new/natflow
+
+# Shortcut Forwarding Engine
+git clone https://$gitea/zhao/shortcut-fe package/new/shortcut-fe
+
 # ---------- 12️⃣ 第三方包 ----------
 log "Clone extra packages (parallel)"
 declare -A EXTRA_PKGS=(
-  [nft-fullcone]="https://${GITEA}/ntlfullcone"
-  [nat6]="https://${GITEA}/package_new_nat6"
-  [natflow]="https://${GITEA}/package_new_natflow"
-  [shortcut-fe]="https://${GITHUB}/zhierh/shortcut-fe"
-  [caddy]="https://git.kejzier.online/zhao/luci-app-caddy"
+  [nft-fullcone]="https://${GITEA}/nft-fullcone"
+  [nat6]="https://${GITHUB}/sbwml/packages_new_nat6"
+  [natflow]="https://${GITHUB}/sbwml/package_new_natflow"
+  [shortcut-fe]="https://${GITEA}/shortcut-fe"
+  [caddy]="https://${GITEA}/luci-app-caddy"
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
