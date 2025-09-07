@@ -117,12 +117,9 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}
-          max-size: 10G  # 去掉 compress 参数以消除警告
-      # LLVM/clang 推荐直接apt安装，兼容所有环境
-      - name: Install LLVM and Clang
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y llvm clang lld
+          max-size: 10G 
+      - name: Install LLVM
+        uses: sbwml/actions@install-llvm
       - name: Install Feeds
         run: |
           cd $OPENWRT_PATH
