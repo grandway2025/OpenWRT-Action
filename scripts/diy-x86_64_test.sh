@@ -111,19 +111,6 @@ log "Disable rust llvm download"
 sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' \
        feeds/packages/lang/rust/Makefile
 log_end
-
-# FullCone module
-git clone https://$gitea/zhao/nft-fullcone package/new/nft-fullcone
-
-# IPv6 NAT
-git clone https://$github/sbwml/packages_new_nat6 package/new/nat6
-
-# Natflow
-git clone https://$github/sbwml/package_new_natflow package/new/natflow
-
-# Shortcut Forwarding Engine
-git clone https://$gitea/zhao/shortcut-fe package/new/shortcut-fe
-
 # ---------- 12️⃣ 第三方包 ----------
 log "Clone extra packages (parallel)"
 declare -A EXTRA_PKGS=(
