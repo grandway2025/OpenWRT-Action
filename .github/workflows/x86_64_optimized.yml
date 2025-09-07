@@ -187,7 +187,7 @@ jobs:
           echo "::endgroup::"
       - name: Compile Firmware
         id: compile
-        timeout-minutes: 180
+        timeout-minutes: 300
         run: |
           echo "::group::Compile firmware"
           cd $OPENWRT_PATH
