@@ -3,14 +3,14 @@ on:
   workflow_dispatch:
     inputs:
       lan_addr:
-        description: "Setting default LAN address"
-        required: true
+        description: "设置默认 LAN 地址"
         default: "192.168.1.10"
+        required: true
         type: string
       root_password:
         description: "默认 root 密码（可选，默认 password）"
-        required: false
         default: "password"
+        required: false
         type: string
       docker:
         description: "编译 Docker"
@@ -41,7 +41,7 @@ on:
         type: boolean
         default: true
 env:
-  REPO_URL: openwrt/openwrt       # ← 只留 owner/repo
+  REPO_URL: openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   CACHE_VER: v1
   CONFIG_FILE: configs/x86_64.config
@@ -117,9 +117,12 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}
-          max-size: 10G
-      - name: Install LLVM 
-        uses: sbwml/actions@install-llvm
+          max-size: 10G  # 去掉 compress 参数以消除警告
+      # LLVM/clang 推荐直接apt安装，兼容所有环境
+      - name: Install LLVM and Clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm clang lld
       - name: Install Feeds
         run: |
           cd $OPENWRT_PATH
@@ -141,17 +144,19 @@ jobs:
         run: |
           echo "::group::Load custom configuration"
           cd $OPENWRT_PATH
-          [[ -e ../files ]] && mv ../files ./files
+          # 主仓库的配置 .config
           cp ../${CONFIG_FILE} .config
-          [[ "${ENABLE_DOCKER}" == "true" ]]    && cat ../configs/config-docker    >> .config
-          [[ "${ENABLE_SSRP}" == "true"   ]]    && cat ../configs/config-ssrp      >> .config
-          [[ "${ENABLE_PASSWALL}" == "true"   ]]    && cat ../configs/PASSWALL      >> .config
-          [[ "${ENABLE_NIKKI}" == "true"   ]]    && cat ../configs/config-nikki      >> .config
-          [[ "${ENABLE_OPENCLASH}" == "true"   ]]    && cat ../configs/openclash      >> .config
-          [[ "${ENABLE_OAF}" == "true"   ]]    && cat ../configs/config-oaf      >> .config   
-          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+          # 按 workflow 用户 input 加载本地 configs（确保这些文件都在主仓库 configs/）
+          [[ "${ENABLE_DOCKER}" == "true"     && -f ../configs/config-docker    ]] && cat ../configs/config-docker    >> .config
+          [[ "${ENABLE_SSRP}" == "true"       && -f ../configs/config-ssrp      ]] && cat ../configs/config-ssrp      >> .config
+          [[ "${ENABLE_PASSWALL}" == "true"   && -f ../configs/config-passwall  ]] && cat ../configs/config-passwall  >> .config
+          [[ "${ENABLE_NIKKI}" == "true"      && -f ../configs/config-nikki     ]] && cat ../configs/config-nikki     >> .config
+          [[ "${ENABLE_OPENCLASH}" == "true"  && -f ../configs/config-openclash ]] && cat ../configs/config-openclash >> .config
+          [[ "${ENABLE_LUCKY}" == "true"      && -f ../configs/config-lucky     ]] && cat ../configs/config-lucky     >> .config
+          [[ "${ENABLE_OAF}" == "true"        && -f ../configs/config-oaf       ]] && cat ../configs/config-oaf       >> .config
           chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
+          # 选用你的预设脚本（如需可保留）
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
           $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
           make defconfig
@@ -209,18 +214,21 @@ jobs:
           rm -rf packages feeds.buildinfo version.buildinfo kernel
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "::endgroup::"
+      # 可选上传 bin 目录
       - name: Upload Bin Directory (optional)
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.OPENWRT_PATH }}/bin
+      # 上传 firmware 到 Artifact（不发布到 Release 时用）
       - name: Upload Firmware to Artifact (when not releasing)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
+      # 上传到github Release
       - name: Upload Firmware to Release
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
