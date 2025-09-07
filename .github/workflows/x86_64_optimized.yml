@@ -1,63 +1,68 @@
+# -------------------------------------------------
+# 统一版 X86_64 OpenWrt 编译工作流
+# -------------------------------------------------
 name: 💻 X86_64 Optimized Build
 on:
   workflow_dispatch:
     inputs:
       lan_addr:
-        description: 'Setting default LAN address'
+        description: "默认 LAN 地址"
         required: true
-        default: '192.168.1.10'
+        default: "192.168.1.10"
         type: string
       root_password:
-        description: '设置默认 root 密码（可选，默认 password）'
+        description: "默认 root 密码（可选，默认 password）"
         required: false
-        default: 'password'
+        default: "password"
         type: string
       docker:
-        description: '编译 Docker'
+        description: "编译 Docker"
         type: boolean
         default: true
       ssrp:
-        description: '编译 ShadowSocksR Plus+'
+        description: "编译 ShadowSocksR Plus+"
         type: boolean
         default: true
       passwall:
-        description: '编译 passwall'
+        description: "编译 Passwall"
         type: boolean
         default: true
       nikki:
-        description: '编译 Nikki'
+        description: "编译 Nikki"
         type: boolean
         default: true
       openclash:
-        description: '编译 OpenClash'
+        description: "编译 OpenClash"
         type: boolean
         default: true
       lucky:
-        description: '编译 Lucky'
+        description: "编译 Lucky"
         type: boolean
         default: true
       oaf:
-        description: '编译 OpenAppFilter'
+        description: "编译 OpenAppFilter"
         type: boolean
         default: true
 env:
-  # 只写 owner/repo，checkout 会自动拼接 URL
-  REPO_URL: openwrt/openwrt
+  # ----------------------- 基础信息 -----------------------
+  REPO_URL: https://github.com/openwrt/openwrt   # OpenWrt 官方仓库
   REPO_BRANCH: openwrt-24.10
-  CACHE_VER: v1
-  CONFIG_FILE: configs/x86_64.config      # 必须在当前仓库根目录
-  DIY_SCRIPT: scripts/diy-x86_64.sh
+  CACHE_VER: v1                                   # 改动此值即可强制失效缓存
+  CONFIG_FILE: configs/x86_64.config              # 必须位于 **当前仓库根目录**
+  DIY_SCRIPT: scripts/diy-x86_64_test.sh         # 必须位于 **当前仓库根目录**
   CLASH_KERNEL: amd64
-  UPLOAD_BIN_DIR: false
-  FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: X86_64
+  # --------------------- 镜像 & Git 地址 --------------------
   MIRROR: https://mirrors.tuna.tsinghua.edu.cn/openwrt
   GITEA: git.kejizero.online/zhao
   GITHUB: github.com
+  # ------------------ 其它开关 ---------------------------
+  UPLOAD_BIN_DIR: false
+  FIRMWARE_RELEASE: true
+  FIRMWARE_TAG: X86_64
 jobs:
   build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 420
+    runs-on: ubuntu-24.04            # 约 14 GB 磁盘空间
+    timeout-minutes: 420             # 7 h
     steps:
       # -------------------------------------------------
       # 0️⃣ 基础环境
@@ -68,41 +73,44 @@ jobs:
           git config --global user.name actions
           git config --global user.email action@github.com
       # -------------------------------------------------
-      # 1️⃣ 释放磁盘空间 + 检查剩余
+      # 1️⃣ 释放磁盘空间 + 打印检查
       # -------------------------------------------------
       - name: Free disk space
         uses: sbwml/actions@free-disk
       - name: Show free space after cleanup
         run: |
+          echo "=== FREE SPACE BEFORE CHECKOUT ==="
           df -hT $GITHUB_WORKSPACE
+          echo "=== TOP‑10 DIR SIZES (workspace) ==="
           du -sh $GITHUB_WORKSPACE/* 2>/dev/null | sort -h | tail -n 20
       # -------------------------------------------------
-      # 2️⃣ Checkout OpenWrt source **到子目录 openwrt**
+      # 2️⃣ 检出 **当前** 仓库（包含 configs/、scripts/）
       # -------------------------------------------------
-      - name: Checkout OpenWrt source
-        uses: actions/checkout@v4
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4   # **不指定 repository / ref**，默认就是本仓库
         with:
-          repository: ${{ env.REPO_URL }}
-          ref: ${{ env.REPO_BRANCH }}
-          path: openwrt               # 以后用 $OPENWRT_PATH 访问
           fetch-depth: 1
       # -------------------------------------------------
-      # 3️⃣ 保存仓库元信息（用于 Release）
+      # 3️⃣ 手动克隆 OpenWrt 源码到子目录 openwrt/
+      # -------------------------------------------------
+      - name: Clone OpenWrt source
+        run: |
+          git clone --depth=1 ${{ env.REPO_URL }} -b ${{ env.REPO_BRANCH }} openwrt
+          echo "OPENWRT_PATH=$PWD/openwrt" >> $GITHUB_ENV
+      # -------------------------------------------------
+      # 4️⃣ 收集元信息（commit、时间等）供 Release 使用
       # -------------------------------------------------
       - name: Export repository meta
         id: meta
         run: |
-          echo "OPENWRT_PATH=$GITHUB_WORKSPACE/openwrt" >> $GITHUB_ENV
-          COMMIT_AUTHOR=$(git show -s --format='作者: %an')
-          COMMIT_DATE=$(git show -s --format='时间: %ci')
-          COMMIT_MESSAGE=$(git show -s --format='内容: %s')
-          COMMIT_HASH=$(git rev-parse HEAD)
-          echo "COMMIT_AUTHOR=$COMMIT_AUTHOR"   >> $GITHUB_ENV
-          echo "COMMIT_DATE=$COMMIT_DATE"       >> $GITHUB_ENV
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          echo "COMMIT_HASH=$COMMIT_HASH"       >> $GITHUB_ENV
+          cd $OPENWRT_PATH
+          echo "COMMIT_AUTHOR=$(git show -s --format='作者: %an')"   >> $GITHUB_ENV
+          echo "COMMIT_DATE=$(git show -s --format='时间: %ci')"     >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$(git show -s --format='内容: %s')" >> $GITHUB_ENV
+          echo "COMMIT_HASH=$(git rev-parse HEAD)"                >> $GITHUB_ENV
+          echo "SOURCE_REPO=$(basename ${{ env.REPO_URL }})"       >> $GITHUB_ENV
       # -------------------------------------------------
-      # 4️⃣ 缓存：downloads / toolchain / feeds
+      # 5️⃣ 缓存：downloads / toolchain / feeds
       # -------------------------------------------------
       - name: Cache Downloads
         uses: actions/cache@v4
@@ -111,6 +119,7 @@ jobs:
           key: dl-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
           restore-keys: |
             dl-${{ runner.os }}-${{ env.CACHE_VER }}-
+            dl-${{ runner.os }}-
       - name: Cache Toolchain
         uses: actions/cache@v4
         with:
@@ -120,6 +129,7 @@ jobs:
           key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
           restore-keys: |
             toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-
+            toolchain-${{ runner.os }}-
       - name: Cache Feeds
         uses: actions/cache@v4
         with:
@@ -127,8 +137,9 @@ jobs:
           key: feeds-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
           restore-keys: |
             feeds-${{ runner.os }}-${{ env.CACHE_VER }}-
+            feeds-${{ runner.os }}-
       # -------------------------------------------------
-      # 5️⃣ ccache
+      # 6️⃣ ccache（加速二次编译，控制磁盘占用）
       # -------------------------------------------------
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -137,14 +148,14 @@ jobs:
           max-size: 10G
           compress: true
       # -------------------------------------------------
-      # 6️⃣ Install LLVM (v14)
+      # 7️⃣ 安装 LLVM（OpenWrt 24.10 推荐 v14）
       # -------------------------------------------------
-      - name: Install LLVM
+      - name: Install LLVMv14)
         uses: sbwml/actions@install-llvm
         with:
           version: 14
       # -------------------------------------------------
-      # 7️⃣ Install Feeds（自定义 feeds.conf）
+      # 8️⃣ 安装 feeds（自定义 feeds.conf）
       # -------------------------------------------------
       - name: Install Feeds
         run: |
@@ -154,19 +165,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
       # -------------------------------------------------
-      # 8️⃣ **调试** – 确认自定义配置文件真的在根工作区
-      # -------------------------------------------------
-      - name: Verify that config file exists
-        run: |
-          echo "Looking for $GITHUB_WORKSPACE/${CONFIG_FILE}"
-          if [[ ! -f "$GITHUB_WORKSPACE/${CONFIG_FILE}" ]]; then
-            echo "::error ::Config file NOT found!"
-            echo "===== REPO LAYOUT (first 200 lines) ====="
-            ls -Rla $GITHUB_WORKSPACE | head -n 200
-            exit 1
-          fi
-      # -------------------------------------------------
-      # 9️⃣ Load Custom Configuration + run DIY 脚本
+      # 9️⃣ **关键**：加载自定义配置 + 运行 diy 脚本
       # -------------------------------------------------
       - name: Load Custom Configuration
         env:
@@ -175,40 +174,45 @@ jobs:
           ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
           ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
           ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
-          ENABLE_LUCKY: ${{ github.event.inputs.lucky }}
+          ENABLE_LY: ${{ github.event.inputs.lucky }}
           ENABLE_OAF: ${{ github.event.inputs.oaf }}
           LAN: ${{ github.event.inputs.lan_addr }}
           ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
         run: |
           echo "::group::Load custom configuration"
           cd $OPENWRT_PATH
-          # 把工作区的 files/（如果存在）搬进源码树
-          [[ -e $GITHUB_WORKSPACE/files ]] && mv $GITHUB_WORKSPACE/files ./files
-          # **关键：使用绝对路径拷贝 .config**
+          # ① 确认我们真的拿到了 config 文件（绝对路径，永不走错）
+          if [[ ! -f "$GITHUB_WORKSPACE/${CONFIG_FILE}" ]]; then
+            echo "::error ::Config file not found: $GITHUB_WORKSPACE/${CONFIG_FILE}"
+            ls -Rla $GITHUB_WORKSPACE | head -n 200
+            exit 1
+          fi
+          # ② 把模板 .config 放进源码树
           cp "$GITHUB_WORKSPACE/${CONFIG_FILE}" .config
-          # 赋予执行权限（防止 git checkout 丢失 executable bit）
-          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-          chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
-          # 运行你的 DIY 脚本（已自行处理插件开关）
-          $GITHUB_WORKSPACE/${DIY_SCRIPT}
-          $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
-          $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
-          # 再次生成最终的 .config
+          # ③ 给予执行权限（Git 会把 exec 位丢掉，手动补上）
+          chmod +x "$GITHUB_WORKSPACE/scripts"/*.sh
+          chmod +x "$GITHUB_WORKSPACE/${DIY_SCRIPT}"
+          # ④ 运行自定义 DIY 脚本（内部已经读取上面的 env 变量）
+          "$GITHUB_WORKSPACE/${DIY_SCRIPT}"
+          # ⑤ （如果你还有 preset‑* 脚本，保持兼容）
+          "$GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh" $CLASH_KERNEL
+          "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh" $CLASH_KERNEL
+          # ⑥ 再次执行 make defconfig，确保所有选项都写入 .config
           make defconfig
           echo "::endgroup::"
-          # ----------------- 生成后续需要的环境变量 -----------------
+          # ----------------- 导出后续步骤需要的变量 -----------------
           DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'"' -f2)
           DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'"' -f2)
           echo "DEVICE_TARGET=$DEVICE_TARGET"   >> $GITHUB_ENV
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
-          echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-          # 获取官方 OpenWrt 最新 Release（用于 Release tag）
-          latest_release=$(curl -fsSL "https://api.github.com/repos/openwrt/openwrt/releases/latest" \
+          echo "IP_ADDR=$LAN"               >> $GITHUB_ENV
+          echo "ROOT_PASSWORD=$ROOT_PASSWORD" >> $GITHUB_ENV
+          # 获取官方 OpenWrt 最新 Release（只请求一次）
+          latest_release=$(curl -fsSL "https://api.github.com/repos/${SOURCE_REPO}/releases/latest" \
             | jq -r .tag_name | sed 's/^v//')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
       # -------------------------------------------------
-      # 10️⃣ 编译阶段（tools → toolchain → firmware）
+      # 10️⃣ 编译分阶段：tools → toolchain → firmware
       # -------------------------------------------------
       - name: Build tools
         timeout-minutes: 120
@@ -239,15 +243,17 @@ jobs:
           echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
           echo "::endgroup::"
       # -------------------------------------------------
-      # 11️⃣ 编译结束后检查磁盘（防止后面的上传因磁盘不足失败）
+      # 11️⃣ 编译结束后再次检查磁盘（防止上传阶段因空间不足失败）
       # -------------------------------------------------
       - name: Check space usage (final)
         if: always()
         run: |
+          echo "=== DISK USAGE AFTER COMPILATION ==="
           df -hT
+          echo "=== BIGGEST DIRS (top 20) ==="
           du -sh $OPENWRT_PATH/* 2>/dev/null | sort -h | tail -n 20
       # -------------------------------------------------
-      # 12️⃣ 打包产物（kernel.tar.xz）
+      # 12️⃣ 打包产物（kernel.tar.xz + firmware）
       # -------------------------------------------------
       - name: Organise files
         if: steps.compile.outputs.status == 'success'
@@ -258,12 +264,12 @@ jobs:
           cp $OPENWRT_PATH/.config build.config
           mkdir -p kernel
           mv -f packages/* kernel
-          tar -Jcf kernel.tar.xz kernel   # xz -9 多线程压缩
+          tar -Jcf kernel.tar.xz kernel   # 使用 xz，压缩率更高且多核
           rm -rf packages feeds.buildinfo version.buildinfo kernel
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "::endgroup::"
       # -------------------------------------------------
-      # 13️⃣ 可选：上传 Bin 目录（仅在需要时打开）
+      # 13️⃣（可选）上传 Bin 目录
       # -------------------------------------------------
       - name: Upload Bin Directory (optional)
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
@@ -272,7 +278,7 @@ jobs:
           name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.OPENWRT_PATH }}/bin
       # -------------------------------------------------
-      # 14️⃣ 上传固件（非 Release 场景）
+      # 14️⃣ 上传固件至 Artifact（非 Release 场景）
       # -------------------------------------------------
       - name: Upload Firmware to Artifact (when not releasing)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
@@ -281,14 +287,14 @@ jobs:
           name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
       # -------------------------------------------------
-      # 15️⃣ Release（当 FIRMWARE_RELEASE 为 true 时触发）
+      # 15️⃣ 发布 Release（当 FIRMWARE_RELEASE 为 true 时触发）
       # -------------------------------------------------
       - name: Upload Firmware to Release
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
         with:
           name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
-          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}
+          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           artifacts: ${{ env.FIRMWARE_PATH }}/*
@@ -305,4 +311,21 @@ jobs:
             - **提交作者**: ${{ env.COMMIT_AUTHOR }}
             - **提交时间**: ${{ env.COMMIT_DATE }}
             - **提交信息**: ${{ env.COMMIT_MESSAGE }}
-            - **Commit SHA**: ${{ env.COMMIT_HASH }}
+            - **Commit SHA**: ${{ env.COMMIT``###关键
+ 改动点 | 作用 |
+|--------|------|
+| **步骤 2** `Checkout workflow repository`（不带 `repository` 参数） | 把 **你的仓库**（含 `configs/`、`scripts/`）检出到根目录，确保文件真实存在。 |
+| **步骤 3** `git clone` 拉取 OpenWrt 源码到 `openwrt/` | 与 `checkout` 完全分离，避免相互覆盖。 |
+| **`Load Custom Configuration`** 中 **绝对路径** `cp "$GITHUB_WORKSPACE/${CONFIG_FILE}" .config` | 不再依赖 `../`，即使工作目录层级变化也能定位。 |
+| **`chmod +x`** 只对工作区的脚本做权限提升 | 防止因 `git checkout` 丢失 `x` 位导致运行错误。 |
+| **`latest_release`** 使用一次 `curl … /releases/latest` + `jq` 取 tag，省去多次请求。 |
+| **磁盘检查**（`Free disk space` + `Check space usage`) | 防止 GitHub‑24.04（≈14 GB）在 `make download` 期间被耗尽。 |
+| **缓存**（downloads / toolchain / feeds）+ **ccache** | 大幅降低二次编译时间并控制磁盘占用。 |
+---
+## 4️⃣ 常见“找不到文件”调试技巧（如果你以后还遇到类似问题）
+1. **打印工作区结构**  
+   ```yaml
+   - name: List repository layout
+     run: |
+       echo "=== WORKSPACE ROOT ==="
+       ls -Rla $GITHUB_WORKSPACE | head -n 200
