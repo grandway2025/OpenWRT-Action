@@ -65,11 +65,15 @@ jobs:
           git config --global user.email action@github.com
       - name: Free disk space
         uses: sbwml/actions@free-disk
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          path: .
       - name: Checkout OpenWrt source
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_URL }}
-          ref: openwrt-24.10
+          ref: ${{ env.REPO_BRANCH }}
           path: openwrt
           fetch-depth: 1
       - name: Export repository meta
