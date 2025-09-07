@@ -50,7 +50,7 @@ env:
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: X86_64
-  MIRROR: https://mirrors.tuna.tsinghua.edu.cn/openwrt
+  MIRROR: https://raw.githubusercontent.com/grandway2025/OpenWRT-Action/main
   GITEA: git.kejizero.online/zhao
   GITHUB: github.com
 jobs:
