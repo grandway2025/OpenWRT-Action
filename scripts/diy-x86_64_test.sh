@@ -70,10 +70,8 @@ log "Replace nginx (latest)"
 rm -rf feeds/packages/net/nginx
 git clone "https://${GITHUB}/sbwml/feeds_packages_net_nginx.git" \
           feeds/packages/net/nginx -b openwrt-24.10
-sed -i '_param stdout 1/procd_set_param stdout 0/' \
-       feeds/packages/net/nginx/files/nginx.init
-sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/' \
-       feeds/packages/net/nginx/files/nginx.init
+sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/' feeds/packages/net/nginx/files/nginx.init
+sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/' feeds/packages/net/nginx/files/nginx.init
 curl -fsSL "${MIRROR}/Customize/nginx/luci.locations" \
       > feeds/packages/net/nginx/files-luci-support/luci.locations
 curl -fsSL "${MIRROR}/Customize/nginx/uci.conf.template" \
