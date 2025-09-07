@@ -118,11 +118,8 @@ jobs:
         with:
           key: ccache-${{ runner.os }}-${{ env.CACHE_VER }}
           max-size: 10G
-          compress: true
-      - name: Install LLVM (v14)
+      - name: Install LLVM 
         uses: sbwml/actions@install-llvm
-        with:
-          version: 14
       - name: Install Feeds
         run: |
           cd $OPENWRT_PATH
@@ -146,6 +143,12 @@ jobs:
           cd $OPENWRT_PATH
           [[ -e ../files ]] && mv ../files ./files
           cp ../${CONFIG_FILE} .config
+          [[ "${ENABLE_DOCKER}" == "true" ]]    && cat ../configs/config-docker    >> .config
+          [[ "${ENABLE_SSRP}" == "true"   ]]    && cat ../configs/config-ssrp      >> .config
+          [[ "${ENABLE_PASSWALL}" == "true"   ]]    && cat ../configs/PASSWALL      >> .config
+          [[ "${ENABLE_NIKKI}" == "true"   ]]    && cat ../configs/config-nikki      >> .config
+          [[ "${ENABLE_OPENCLASH}" == "true"   ]]    && cat ../configs/openclash      >> .config
+          [[ "${ENABLE_OAF}" == "true"   ]]    && cat ../configs/config-oaf      >> .config   
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           chmod +x $GITHUB_WORKSPACE/${DIY_SCRIPT}
           $GITHUB_WORKSPACE/${DIY_SCRIPT}
