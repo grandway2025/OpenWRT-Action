@@ -1,5 +1,5 @@
 # -------------------------------------------------
-# X86_64 OpenWrt 编译工作流（已修复 LLVM 与 kernel‑doc 问题）
+# X86_64 OpenWrt 编译工作流（已内置自动屏蔽失效 kernel‑doc 下载）
 # -------------------------------------------------
 name: 💻 X86_64 Optimized Build
 on:
@@ -46,7 +46,7 @@ on:
       download_kernel_doc:
         description: "是否下载 kernel‑doc（默认 false）"
         type: boolean
-        default: false   # 改为 true 再手动打开即可
+        default: false
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
@@ -149,13 +149,12 @@ jobs:
           max-size: 10G
           compress: true
       # -------------------------------------------------
-      # 7️⃣ 安装 LLVM‑14（使用 apt‑get，避免 Action 参数错误）
+      # 7️⃣ 安装 clang‑14（使用 apt-get，避免 Action 参数错误）
       # -------------------------------------------------
       - name: Install clang‑14 (LLVM 14)
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-14 llvm-14
-          # 把 clang‑14 加入 PATH，后面的 make 会自动使用
           echo "/usr/lib/llvm-14/bin" >> $GITHUB_PATH
       # -------------------------------------------------
       # 8️⃣ 安装 feeds（自定义 feeds.conf）
@@ -192,27 +191,29 @@ jobs:
           fi
           # ② 复制 .config
           cp "$GITHUB_WORKSPACE/${{ env.CONFIG_FILE }}" .config
-          # ③ 赋予执行权限（git checkout 会丢失）
+          # ③ 让脚本拥有执行权限
           chmod +x "$GITHUB_WORKSPACE/scripts"/*.sh
           chmod +x "$GITHUB_WORKSPACE/${{ env.DIY_SCRIPT }}"
-          # ④ 运行 diy 脚本
+          # ④ **自动屏蔽失效的 kernel‑doc 下载**（如果脚本里还有这段会被注释掉）
+          sed -i '/kernel-6\.6/s/^/# /' "$GITHUB_WORKSPACE/${{ env.DIY_SCRIPT }}"
+          # ⑤ 运行 diy 脚本
           "$GITHUB_WORKSPACE/${{ env.DIY_SCRIPT }}"
-          # ⑤ 兼容旧的 preset‑* 脚本（如果不存在会报错，但不影响后面步骤）
+          # ⑥ 兼容旧的 preset‑* 脚本（如果存在）
           [[ -x "$GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh" ]] && \
             "$GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh" ${{ env.CLASH_KERNEL }}
           [[ -x "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh" ]] && \
             "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh" ${{ env.CLASH_KERNEL }}
-          # ⑥ 再次执行 make defconfig，确保 .config 完整
+          # ⑦ 再次执行 make defconfig
           make defconfig
           echo "::endgroup::"
-          # ------- 导出后续步骤需要的变量 -------
+          # ----------- 导出后续步骤需要的变量 -----------
           DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'"' -f2)
           DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'"' -f2)
           echo "DEVICE_TARGET=$DEVICE_TARGET"   >> $GITHUB_ENV
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
           echo "IP_ADDR=$LAN"               >> $GITHUB_ENV
           echo "ROOT_PASSWORD=$ROOT_PASSWORD" >> $GITHUB_ENV
-          # 获取官方 OpenWrt 最新 Release（仅请求一次）
+          # 官方 OpenWrt 最新 Release（只请求一次）
           latest_release=$(curl -fsSL "https://api.github.com/repos/${SOURCE_REPO}/releases/latest" \
             | jq -r .tag_name | sed 's/^v//')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
@@ -223,8 +224,6 @@ jobs:
         if: ${{ github.event.inputs.download_kernel_doc == 'true' }}
         run: |
           echo "::group::Download kernel documentation"
-          # 这里使用官方的下载地址，**请自行替换 target 路径**（示例仅供参考）
-          # 例如 x86_64 target 的路径是：targets/x86/64/
           KERNEL_DOC_URL="https://downloads.openwrt.org/releases/24.10/targets/x86/64/kernel-doc.tar.xz"
           curl -fSL "$KERNEL_DOC_URL" -o kernel-doc.tar.xz
           tar -Jxf kernel-doc.tar.xz -C $OPENWRT_PATH
@@ -261,7 +260,7 @@ jobs:
           echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
           echo "::endgroup::"
       # -------------------------------------------------
-      # 11️⃣ 最终磁盘检查（防止上传阶段因空间不足）
+      # 11️⃣ 最终磁盘检查
       # -------------------------------------------------
       - name: Check space usage (final)
         if: always()
@@ -271,7 +270,7 @@ jobs:
           echo "=== BIGGEST DIRS (top 20) ==="
           du -sh $OPENWRT_PATH/* 2>/dev/null | sort -h | tail -n 20
       # -------------------------------------------------
-      # 12️⃣ 打包产物（kernel.tar.xz + 固件）
+      # 12️⃣ 打包产物
       # -------------------------------------------------
       - name: Organise files
         if: steps.compile.outputs.status == 'success'
@@ -282,7 +281,7 @@ jobs:
           cp $OPENWRT_PATH/.config build.config
           mkdir -p kernel
           mv -f packages/* kernel
-          tar -Jcf kernel.tar.xz kernel   # 使用 xz（多核压缩，压缩率更高）
+          tar -Jcf kernel.tar.xz kernel
           rm -rf packages feeds.buildinfo version.buildinfo kernel
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "::endgroup::"
