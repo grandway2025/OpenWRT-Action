@@ -121,7 +121,7 @@ declare -A EXTRA_PKGS=(
   [caddy]="https://${GITEA}/luci-app-caddy"
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
-  [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
+  [luci-app-poweroffdevice]="https://${GITHUB}/sirpdboy/luci-app-poweroffdevice"
 )
 declare -A EXTRA_BRANCHES=(
   [mosdns]="v5"
