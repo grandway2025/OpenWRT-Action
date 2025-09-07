@@ -75,7 +75,7 @@ jobs:
       # -------------------------------------------------
       # 1️⃣ 释放磁盘空间 + 打印检查
       # -------------------------------------------------
-      - name: Free disk space
+ - name: Free disk space
         uses: sbwml/actions@free-disk
       - name: Show free space after cleanup
         run: |
@@ -150,7 +150,7 @@ jobs:
       # -------------------------------------------------
       # 7️⃣ 安装 LLVM（OpenWrt 24.10 推荐 v14）
       # -------------------------------------------------
-      - name: Install LLVMv14)
+      - name: Install LLVM v14
         uses: sbwml/actions@install-llvm
         with:
           version: 14
@@ -174,14 +174,14 @@ jobs:
           ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
           ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
           ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
-          ENABLE_LY: ${{ github.event.inputs.lucky }}
+          ENABLE_LUCKY: ${{ github.event.inputs.lucky }}
           ENABLE_OAF: ${{ github.event.inputs.oaf }}
           LAN: ${{ github.event.inputs.lan_addr }}
           ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
         run: |
           echo "::group::Load custom configuration"
           cd $OPENWRT_PATH
-          # ① 确认我们真的拿到了 config 文件（绝对路径，永不走错）
+          # ① 确认配置文件真实存在
           if [[ ! -f "$GITHUB_WORKSPACE/${CONFIG_FILE}" ]]; then
             echo "::error ::Config file not found: $GITHUB_WORKSPACE/${CONFIG_FILE}"
             ls -Rla $GITHUB_WORKSPACE | head -n 200
@@ -194,7 +194,7 @@ jobs:
           chmod +x "$GITHUB_WORKSPACE/${DIY_SCRIPT}"
           # ④ 运行自定义 DIY 脚本（内部已经读取上面的 env 变量）
           "$GITHUB_WORKSPACE/${DIY_SCRIPT}"
-          # ⑤ （如果你还有 preset‑* 脚本，保持兼容）
+          # ⑤（如果还有 preset‑* 脚本，保持兼容）
           "$GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh" $CLASH_KERNEL
           "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh" $CLASH_KERNEL
           # ⑥ 再次执行 make defconfig，确保所有选项都写入 .config
@@ -294,6 +294,7 @@ jobs:
         uses: ncipollo/release-action@v1.14.0
         with:
           name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
+          # 为每一次 CI 生成唯一 tag（加入时间戳）
           tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
@@ -311,21 +312,4 @@ jobs:
             - **提交作者**: ${{ env.COMMIT_AUTHOR }}
             - **提交时间**: ${{ env.COMMIT_DATE }}
             - **提交信息**: ${{ env.COMMIT_MESSAGE }}
-            - **Commit SHA**: ${{ env.COMMIT``###关键
- 改动点 | 作用 |
-|--------|------|
-| **步骤 2** `Checkout workflow repository`（不带 `repository` 参数） | 把 **你的仓库**（含 `configs/`、`scripts/`）检出到根目录，确保文件真实存在。 |
-| **步骤 3** `git clone` 拉取 OpenWrt 源码到 `openwrt/` | 与 `checkout` 完全分离，避免相互覆盖。 |
-| **`Load Custom Configuration`** 中 **绝对路径** `cp "$GITHUB_WORKSPACE/${CONFIG_FILE}" .config` | 不再依赖 `../`，即使工作目录层级变化也能定位。 |
-| **`chmod +x`** 只对工作区的脚本做权限提升 | 防止因 `git checkout` 丢失 `x` 位导致运行错误。 |
-| **`latest_release`** 使用一次 `curl … /releases/latest` + `jq` 取 tag，省去多次请求。 |
-| **磁盘检查**（`Free disk space` + `Check space usage`) | 防止 GitHub‑24.04（≈14 GB）在 `make download` 期间被耗尽。 |
-| **缓存**（downloads / toolchain / feeds）+ **ccache** | 大幅降低二次编译时间并控制磁盘占用。 |
----
-## 4️⃣ 常见“找不到文件”调试技巧（如果你以后还遇到类似问题）
-1. **打印工作区结构**  
-   ```yaml
-   - name: List repository layout
-     run: |
-       echo "=== WORKSPACE ROOT ==="
-       ls -Rla $GITHUB_WORKSPACE | head -n 200
+            - **Commit SHA**: ${{ env.COMMIT_HASH }}
