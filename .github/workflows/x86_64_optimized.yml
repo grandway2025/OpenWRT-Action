@@ -166,8 +166,8 @@ jobs:
           # 生成最终 .config
           make defconfig
           # 输出环境变量给后续 job
-          echo "DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | cut -d'\"' -f2)"         >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | cut -d'\"' -f2)"   >> $GITHUB_ENV
+          echo "DEVICE_TARGET=$(grep ^CONFIG_TARGET_BOARD .config | head -n1 | cut -d'=' -f2 | tr -d '\"')"         >> $GITHUB_ENV
+          echo "DEVICE_SUBTARGET=$(grep ^CONFIG_TARGET_SUBTARGET .config | head -n1 | cut -d'=' -f2 | tr -d '\"')"   >> $GITHUB_ENV
           echo "IP_ADDR=${LAN}"              >> $GITHUB_ENV
           echo "ROOT_PASSWORD=${ROOT_PASSWORD}"  >> $GITHUB_ENV
           # 获取 OpenWrt 上游最新 tag
