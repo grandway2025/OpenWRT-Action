@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
-#=================================================================
-# OpenWrt X86_64 DIY 编译脚本（已优化）
-#   • 统一全局变量（MIRROR、GITEA、GITHUB）
-#   • set -euo pipefail + 统一日志/错误函数
-#   • download / apply_patch / clone_pkg 三个通用函数
-#   • 所有第三方包放在关联数组 EXTRA_PKGS 并行克隆
-#   • 关键变量写入 $GITHUB_ENV 供 workflow 使用
-#   • 新增可选下载 kernel‑doc（DOWNLOAD_KERNEL_DOC，默认 false）
-#=================================================================
+#=================================================
+#   OpenWrt X86_64 DIY 编译脚本（优化版，无 kernel-doc 下载）
+#=================================================
 set -euo pipefail
 IFS=$'\n\t'
 # ---------- 1️⃣ 全局变量 ----------
@@ -46,26 +40,15 @@ log "Set compiler optimization"
 sed -i 's/^EXTRA_OPTIMIZATION=.*/EXTRA_OPTIMIZATION=-O2 -march=x86-64-v2/' include/target.mk
 log_end
 # ---------- 5️⃣ Kernel & vermagic ----------
-log "Handle kernel source & optional documentation"
-# 只在需要离线 kernel‑doc 时才下载（默认 false）
-if [[ "${DOWNLOAD_KERNEL_DOC:-false}" == "true" ]]; then
-    # 官方可用的 URL（随时可替换）
-    KERNEL_DOC_URL="https://downloads.openwrt.org/releases/24.10/targets/x86/64/kernel-doc.tar.xz"
-    KERNEL_PATCH_URL="https://downloads.openwrt.org/releases/24.10/targets/x86/64/patches/0001-linux-module-video.patch"
-    log "Download kernel doc tarball"
-    download "$KERNEL_DOC_URL"          include/kernel-${KVER}.tar.xz
-    tar -Jxf include/kernel-${KVER}.tar.xz -C include
-    log "Download kernel video patch"
-    download "$KERNEL_PATCH_URL" package/0001-linux-module-video.patch
-    apply_patch package/0001-linux-module-video.patch
-else
-    log "Skip kernel‑doc download (DOWNLOAD_KERNEL_DOC=false)"
-fi
-log "Generate vermagic"
+log "Skip kernel doc download (not required)"
+# 保留 vermagic 生成逻辑
 sed -i 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' \
       include/kernel-defaults.mk
-grep HASH include/kernel-${KVER} | awk -F'HASH-' '{print $2}' | awk '{print $1}' \
-  | md5sum | awk '{print $1}' > .vermagic
+# 若 vermagic 依赖 HASH，可以这样生成：
+if [[ -e include/kernel-${KVER} ]]; then
+    grep HASH include/kernel-${KVER} | awk -F'HASH-' '{print $2}' | awk '{print $1}' \
+    | md5sum | awk '{print $1}' > .vermagic
+fi
 log_end
 # ---------- 6️⃣ 可选功能 ----------
 if [[ "${ENABLE_DOCKER:-false}"    == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-docker"    >> .config; fi
@@ -136,8 +119,8 @@ declare -A EXTRA_PKGS=(
   [nft-fullcone]="https://${GITEA}/nft-fullcone"
   [nat6]="https://${GITEA}/package_new_nat6"
   [natflow]="https://${GITEA}/package_new_natflow"
-  [shortcut-fe]="https://${GITEA}/zhiern/shortcut-fe"
-  [caddy]="https://${GITEA}/luci-app-caddy"
+  [shortcut-fe]="https://${GITHUB}/zhiern/shortcut-fe"
+  [caddy]="https://git.kejizero.online/zhao/luci-app-caddy"
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns -b v5"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
