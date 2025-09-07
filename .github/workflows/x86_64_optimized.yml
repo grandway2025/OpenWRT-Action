@@ -69,6 +69,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: .
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev
       - name: Checkout OpenWrt source
         uses: actions/checkout@v4
         with:
