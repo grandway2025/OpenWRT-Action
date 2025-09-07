@@ -51,13 +51,13 @@ if [[ -e include/kernel-${KVER} ]]; then
 fi
 log_end
 # ---------- 6️⃣ 可选功能 ----------
-if [[ "${ENABLE_DOCKER:-false}"    == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-docker"    >> .config; fi
-if [[ "${ENABLE_SSRP:-false}"      == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-ssrp"      >> .config; fi
-if [[ "${ENABLE_PASSWALL:-false}" == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-passwall" >> .config; fi
-if [[ "${ENABLE_NIKKI:-false}"    == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-nikki"    >> .config; fi
-if [[ "${ENABLE_OPENCLASH:-false}" == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-openclash" >> .config; fi
-if [[ "${ENABLE_LUCKY:-false}"    == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-lucky"    >> .config; fi
-if [[ "${ENABLE_OAF:-false}"      == "true" ]]; then curl -fsSL "${MIRROR}/configs/config-oaf"      >> .config; fi
+if [[ "${ENABLE_DOCKER:-false}"    == "true" && -f ../configs/config-docker ]]; then cat ../configs/config-docker >> .config; fi
+if [[ "${ENABLE_SSRP:-false}"      == "true" && -f ../configs/config-ssrp ]]; then cat ../configs/config-ssrp >> .config; fi
+if [[ "${ENABLE_PASSWALL:-false}"  == "true" && -f ../configs/config-passwall ]]; then cat ../configs/config-passwall >> .config; fi
+if [[ "${ENABLE_NIKKI:-false}"     == "true" && -f ../configs/config-nikki ]]; then cat ../configs/config-nikki >> .config; fi
+if [[ "${ENABLE_OPENCLASH:-false}" == "true" && -f ../configs/config-openclash ]]; then cat ../configs/config-openclash >> .config; fi
+if [[ "${ENABLE_LUCKY:-false}"     == "true" && -f ../configs/config-lucky ]]; then cat ../configs/config-lucky >> .config; fi
+if [[ "${ENABLE_OAF:-false}"       == "true" && -f ../configs/config-oaf ]]; then cat ../configs/config-oaf >> .config; fi
 # ---------- 7️⃣ 清理 SNAPSHOT ----------
 log "Cleanup snapshot tags"
 sed -i 's/-SNAPSHOT//g' include/version.mk \
