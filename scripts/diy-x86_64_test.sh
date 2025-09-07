@@ -122,16 +122,13 @@ declare -A EXTRA_PKGS=(
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
-  # 如需更多包，直接在这里添加
 )
-# 为部分包指定分支，未指定则用默认分支
 declare -A EXTRA_BRANCHES=(
   [mosdns]="v5"
 )
 for pkg in "${!EXTRA_PKGS[@]}"; do
   repo="${EXTRA_PKGS[$pkg]}"
-  branch="${EXTRA_BRANCHES[$pkg]}"
-  # 克隆函数的定义需要你自己的脚本有 clone_pkg，如下调用
+  branch="${EXTRA_BRANCHES[$pkg]:-}"   # ★ 用默认值方式安全访问（空字符串）
   clone_pkg "$repo" "package/new/$pkg" "$branch" &
 done
 wait
