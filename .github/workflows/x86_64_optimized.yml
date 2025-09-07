@@ -123,7 +123,7 @@ jobs:
       - name: Cache Toolchain
         uses: actions/cache@v4
         with:
- path: |
+          path: |
             openwrt/staging_dir/host
             openwrt/staging_dir/toolchain-*
           key: toolchain-${{ runner.os }}-${{ env.CACHE_VER }}-${{ env.REPO_BRANCH }}
@@ -189,7 +189,7 @@ jobs:
           fi
           # ② 复制 .config
           cp "$GITHUB_WORKSPACE/${{ env.CONFIG_FILE }}" .config
-          # ③ 给予执行权限（git checkout 会丢失 x 位）
+          # ③ 赋予执行权限（Git checkout 会丢失 x 位）
           chmod +x "$GITHUB_WORKSPACE/scripts"/*.sh
           chmod +x "$GITHUB_WORKSPACE/${{ env.DIY_SCRIPT }}"
           # ④ 运行 DIY 脚本（内部已读取 env 变量）
