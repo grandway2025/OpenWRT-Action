@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-#=================================================
-#   OpenWrt X86_64 DIY 编译脚本（已优化）
-#   • 统一变量 (MIRROR、GITEA、GITHUB)
+#=================================================================
+# OpenWrt X86_64 DIY 编译脚本（已优化）
+#   • 统一全局变量（MIRROR、GITEA、GITHUB）
 #   • set -euo pipefail + 统一日志/错误函数
 #   • download / apply_patch / clone_pkg 三个通用函数
-#   • 全部第三方包放在关联数组 EXTRAPKS 并行克隆
-#   • 最后把关键变量写入 $GITHUB_ENV 供 workflow 使用
-#=================================================
+#   • 所有第三方包放在关联数组 EXTRA_PKGS 并行克隆
+#   • 关键变量写入 $GITHUB_ENV 供 workflow 使用
+#   • 新增可选下载 kernel‑doc（DOWNLOAD_KERNEL_DOC，默认 false）
+#=================================================================
 set -euo pipefail
 IFS=$'\n\t'
 # ---------- 1️⃣ 全局变量 ----------
@@ -45,11 +46,21 @@ log "Set compiler optimization"
 sed -i 's/^EXTRA_OPTIMIZATION=.*/EXTRA_OPTIMIZATION=-O2 -march=x86-64-v2/' include/target.mk
 log_end
 # ---------- 5️⃣ Kernel & vermagic ----------
-log "Download kernel $KVER and patches"
-download "${MIRROR}/doc/kernel-${KVER}"          include/kernel-${KVER}
-download "${MIRROR}/doc/patch/kernel/${KVER}/0001-linux-module-video.patch" \
-         package/0001-linux-module-video.patch
-apply_patch package/0001-linux-module-video.patch
+log "Handle kernel source & optional documentation"
+# 只在需要离线 kernel‑doc 时才下载（默认 false）
+if [[ "${DOWNLOAD_KERNEL_DOC:-false}" == "true" ]]; then
+    # 官方可用的 URL（随时可替换）
+    KERNEL_DOC_URL="https://downloads.openwrt.org/releases/24.10/targets/x86/64/kernel-doc.tar.xz"
+    KERNEL_PATCH_URL="https://downloads.openwrt.org/releases/24.10/targets/x86/64/patches/0001-linux-module-video.patch"
+    log "Download kernel doc tarball"
+    download "$KERNEL_DOC_URL"          include/kernel-${KVER}.tar.xz
+    tar -Jxf include/kernel-${KVER}.tar.xz -C include
+    log "Download kernel video patch"
+    download "$KERNEL_PATCH_URL" package/0001-linux-module-video.patch
+    apply_patch package/0001-linux-module-video.patch
+else
+    log "Skip kernel‑doc download (DOWNLOAD_KERNEL_DOC=false)"
+fi
 log "Generate vermagic"
 sed -i 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' \
       include/kernel-defaults.mk
@@ -125,8 +136,8 @@ declare -A EXTRA_PKGS=(
   [nft-fullcone]="https://${GITEA}/nft-fullcone"
   [nat6]="https://${GITEA}/package_new_nat6"
   [natflow]="https://${GITEA}/package_new_natflow"
-  [shortcut-fe]="https://${GITHUB}/zhiern/shortcut-fe"
-  [caddy]="https://git.kejizero.online/zhao/luci-app-caddy"
+  [shortcut-fe]="https://${GITEA}/zhiern/shortcut-fe"
+  [caddy]="https://${GITEA}/luci-app-caddy"
   [mosdns]="https://${GITHUB}/sbwml/luci-app-mosdns -b v5"
   [OpenAppFilter]="https://${GITHUB}/destan19/OpenAppFilter"
   [luci-app-poweroffdevice]="https://github.com/sirpdboy/luci-app-poweroffdevice"
@@ -152,4 +163,4 @@ DEVICE_TARGET=$DEVICE_TARGET
 DEVICE_SUBTARGET=$DEVICE_SUBTARGET
 EOF
 log "DIY script finished ✅"
-exit 0   # 正常退出
+exit 0
