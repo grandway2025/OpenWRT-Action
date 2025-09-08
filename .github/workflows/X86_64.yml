@@ -1,4 +1,4 @@
-name: 💻 X86_64_Optimized Build
+name: 💻 X86_64
 on:
   workflow_dispatch:
     inputs:
