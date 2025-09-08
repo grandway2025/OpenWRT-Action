@@ -449,7 +449,7 @@ git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --d
 
 # 主题设置
 # sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer.ut
-$ sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
+# sed -i 's|<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>|<a class="luci-link" href="https://github.com/grandway2025" target="_blank">OpenWrt定制版</a>|g' package/new/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
 
 # luci-app-kucat-config
 # git clone https://$github/sirpdboy/luci-app-kucat-config.git package/new/luci-app-kucat-config --depth=1
