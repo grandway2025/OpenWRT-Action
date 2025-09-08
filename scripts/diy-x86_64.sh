@@ -4,7 +4,7 @@
 # 配置参数
 # =====================
 # 脚本URL
-export mirror=http://127.0.0.1:8080
+export mirror=https://raw.githubusercontent.com/grandway2025/OpenWRT-Action/main
 
 # 私有Gitea
 export gitea=git.kejizero.online/zhao
