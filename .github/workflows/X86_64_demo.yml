@@ -6,7 +6,7 @@
 # Blog: https://p3terx.com
 #=================================================
 
-name: 💻 X86_64
+name: 💻 X86_64_demo
 on:
   workflow_dispatch:
     inputs:
