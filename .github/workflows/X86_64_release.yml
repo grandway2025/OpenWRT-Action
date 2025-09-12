@@ -68,9 +68,9 @@ jobs:
         with:
           path: main-repo
       - name: Free disk space
-      uses: sbwml/actions@free-disk
-      with:
-        build-mount-path: /builder
+        uses: sbwml/actions@free-disk
+        with:
+          build-mount-path: /builder
         
       - name: Checkout OpenWrt source code
         uses: actions/checkout@v4
