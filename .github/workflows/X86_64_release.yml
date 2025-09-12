@@ -63,16 +63,12 @@ jobs:
           mkdir -p $HOME/.ccache
           # 现在可以安全地写入配置文件
           echo "max_size = 5.0G" > $HOME/.ccache/ccache.conf
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@v10
+      - name: Free disk space
+        uses: sbwml/actions@free-disk
         with:
-          root-reserve-mb: 512
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-      - name: Checkout Action main repository
-        uses: actions/checkout@v4
+          build-mount-path: /builder
+      - name: Checkout
+        uses: actions/checkout@main
         with:
           path: main-repo
       - name: Checkout OpenWrt source code
@@ -92,10 +88,8 @@ jobs:
           sudo apt-get clean
           echo "Disk space after cleanup:"
           df -h
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev libssl-dev rsync jq llvm-15 clang-15 golang-go
+      - name: Build System Setup
+      uses: sbwml/actions@openwrt-build-setup
       - name: Set up build variables
         id: setup_vars
         run: |
