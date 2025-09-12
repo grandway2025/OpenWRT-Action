@@ -89,7 +89,7 @@ jobs:
           echo "Disk space after cleanup:"
           df -h
       - name: Build System Setup
-      uses: sbwml/actions@openwrt-build-setup
+        uses: sbwml/actions@openwrt-build-setup
       - name: Set up build variables
         id: setup_vars
         run: |
