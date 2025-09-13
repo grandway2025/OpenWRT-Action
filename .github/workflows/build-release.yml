@@ -97,7 +97,7 @@ jobs:
         df -hT
         
     - name: Build System Setup
-        uses: sbwml/actions@openwrt-build-setup
+      uses: sbwml/actions@openwrt-build-setup
 
     - name: Install LLVM
       uses: sbwml/actions@install-llvm
