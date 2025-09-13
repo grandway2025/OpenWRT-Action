@@ -60,8 +60,6 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@main
-      with:
-          path: main-repo
       
     - name: Setup Environment
       run: |
@@ -158,8 +156,8 @@ jobs:
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
-        if [ -f "${{ github.workspace }}/main-repo/feeds.conf.default" ]; then
-          cp ${{ github.workspace }}/main-repo/feeds.conf.default .
+        if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
+          cp ${{ github.workspace }}/feeds.conf.default .
         else
           echo "::warning::feeds.conf.default not found in main-repo. Using default OpenWrt feeds."
         fi
