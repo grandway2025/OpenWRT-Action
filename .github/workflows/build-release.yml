@@ -60,6 +60,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@main
+      with:
+          path: main-repo
       
     - name: Setup Environment
       run: |
@@ -156,13 +158,17 @@ jobs:
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
-        curl -o ./openwrt/feeds.conf.default https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/refs/heads/main/Customize/feeds/feeds.conf.default
+        if [ -f "${{ github.workspace }}/main-repo/feeds.conf.default" ]; then
+          cp ${{ github.workspace }}/main-repo/feeds.conf.default .
+        else
+          echo "::warning::feeds.conf.default not found in main-repo. Using default OpenWrt feeds."
+        fi
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         
     - name: Load Custom Configuration
       run: |
-        # 设置模块编译标志
+        # 设置模块编译
         [ "${{ github.event.inputs.docker }}" = 'true' ] && export ENABLE_DOCKER=y
         [ "${{ github.event.inputs.ssrp }}" = 'true' ] && export ENABLE_SSRP=y
         [ "${{ github.event.inputs.passwall }}" = 'true' ] && export ENABLE_PASSWALL=y
