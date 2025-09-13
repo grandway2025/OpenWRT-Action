@@ -71,6 +71,9 @@ jobs:
         uses: sbwml/actions@free-disk
         with:
           build-mount-path: /builder
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
         
       - name: Checkout OpenWrt source code
         uses: actions/checkout@v4
