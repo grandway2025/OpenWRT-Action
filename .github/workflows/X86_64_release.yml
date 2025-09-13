@@ -69,12 +69,20 @@ jobs:
           path: main-repo
       - name: Free disk space
         uses: sbwml/actions@free-disk
-        with:
-          build-mount-path: /builder
-          remove-dotnet: true
-          remove-android: true
-          remove-haskell: true
-        
+      - name: Additional Space Optimization
+        run: |
+          # 删除不需要的工具
+          sudo apt-get remove -y --purge \
+            azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable \
+            firefox powershell mono-devel libgl1-mesa-dri xserver-xorg-core
+          # 清理 apt 缓存
+          sudo apt-get autoremove -y --purge
+          sudo apt-get clean
+          # 设置 swap 优化参数
+          sudo sysctl vm.swappiness=10
+          sudo sysctl vm.vfs_cache_pressure=50
+          echo "磁盘空间优化后："
+          df -h  
       - name: Checkout OpenWrt source code
         uses: actions/checkout@v4
         with:
