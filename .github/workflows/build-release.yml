@@ -86,9 +86,6 @@ jobs:
         
     - name: Free disk space
       uses: sbwml/actions@free-disk
-      with:
-        root-reserve-gb: 4
-        swap-size-gb: 4
         
     - name: Build System Setup
       uses: sbwml/actions@openwrt-build-setup
@@ -109,23 +106,6 @@ jobs:
         echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
         COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
-        
-    - name: Generate Build Variables
-      run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
-        echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
-        latest_release="$(curl -s https://github.com/openwrt/openwrt/tags | grep -Eo "v[0-9\.]+\-*r*c*[0-9]*.tar.gz" | sed -n '/[2-9][4-9]/p' | sed -n 1p | sed 's/.tar.gz//g' | sed 's/v//g')"
-        echo "LATEST_RELEASE=${latest_release}" >> $GITHUB_ENV
-        echo "PROC_COUNT=$(nproc)" >> $GITHUB_ENV
         
     - name: Cache Toolchain
       uses: actions/cache@v3
@@ -184,7 +164,21 @@ jobs:
         $GITHUB_WORKSPACE/$DIY_SCRIPT
         $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
         $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+        # 生成最终的 .config 文件
+        make defconfig
         
+        # 在 .config 文件最终确定后，生成其他环境变量
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+        echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
+        echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
+        latest_release=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | grep "tag_name" | head -n 1 | cut -d : -f2 | sed 's/[ \"v,]//g')
+        echo "latest_release=${latest_release}" >>$GITHUB_ENV
+  
     - name: Download Packages
       run: |
         cd $OPENWRT_PATH
