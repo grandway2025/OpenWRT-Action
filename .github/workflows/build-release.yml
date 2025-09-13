@@ -84,17 +84,11 @@ jobs:
         uname -a
         echo
         
-    - name: Free Disk Space
-      run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        sudo apt clean
-        docker system prune -af
-        sudo swapoff -a
-        sudo rm -f /swapfile
-        sudo apt -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mysql* php* mongodb* dotnet* moby* snap*
-        sudo apt -y autoremove --purge
-        sudo apt -y clean
-        df -hT
+    - name: Free disk space
+      uses: sbwml/actions@free-disk
+      with:
+        root-reserve-gb: 4
+        swap-size-gb: 4
         
     - name: Build System Setup
       uses: sbwml/actions@openwrt-build-setup
