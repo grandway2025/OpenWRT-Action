@@ -8,10 +8,10 @@
           
     # 基础配置
     cat >> .config << EOF
-CONFIG_TARGET_x86=y
-CONFIG_TARGET_x86_64=y
-CONFIG_TARGET_x86_64_DEVICE_generic=y
-EOF
+    CONFIG_TARGET_x86=y
+    CONFIG_TARGET_x86_64=y
+    CONFIG_TARGET_x86_64_DEVICE_generic=y
+    EOF
           
     # 修改默认设置
     sed -i "s/192.168.1.1/$LAN/g" package/base-files/files/bin/config_generate 2>/dev/null || true
