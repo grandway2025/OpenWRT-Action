@@ -58,7 +58,7 @@ on:
     branches: [ main ]
     paths:
       - 'configs/x86_64.config'
-      - '.github/workflows/x86_64_demo.yml'
+      - '.github/workflows/build-release.yml'
       - 'scripts/diy-x86_64_demo.sh'
 # ============================================
 # 全局环境变量
@@ -280,10 +280,10 @@ jobs:
       - name: 📚 Update Feeds
         run: |
           cd $OPENWRT_PATH
-          if [ -f "${{ github.workspace }}/main-repo/feeds.conf.default" ]; then
-            cp ${{ github.workspace }}/main-repo/feeds.conf.default .
+          if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
+            cp ${{ github.workspace }}/feeds.conf.default .
           else
-            echo "::warning::feeds.conf.default not found in main-repo. Using default OpenWrt feeds."
+            echo "::warning::feeds.conf.default not found in . Using default OpenWrt feeds."
           fi
           # 更新 feeds
           ./scripts/feeds update -a
@@ -313,25 +313,37 @@ jobs:
           [ -e files ] && mv files $OPENWRT_PATH/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
           
-          # 执行自定义脚本
-          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
-          chmod +x $DIY_SCRIPT
-          cd $OPENWRT_PATH
-          $GITHUB_WORKSPACE/$DIY_SCRIPT
-          $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
-          $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+          # 使用 find 命令设置权限
+          echo "🔧 Setting script permissions..."
+          find $GITHUB_WORKSPACE/scripts -type f -name "*.sh" -exec chmod +x {} \;
    
+          # 切换到 OpenWrt 目录
+          cd $OPENWRT_PATH
+          
+          # 执行 DIY 脚本（使用完整路径）
+          echo "🎯 Running DIY script..."
+          bash $GITHUB_WORKSPACE/$DIY_SCRIPT
+          
+          # 执行 mihomo 脚本
+          echo "⚡ Setting up Mihomo core..."
+          bash $GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh $CLASH_KERNEL
+          
+          # 执行 AdGuard 脚本
+          echo "🛡️ Setting up AdGuard core..."
+          bash $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+          
           # 最终配置
           make defconfig
 
+          # 最终配置
+          make defconfig
           # 提取设备信息
           DEVICE_TARGET=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)
           DEVICE_SUBTARGET=$(grep '^CONFIG_TARGET_SUBTARGET=' .config | cut -d'"' -f2)
           
           echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-
-          echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
+          echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
           echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
           
           # 获取最新版本
