@@ -137,15 +137,7 @@ jobs:
     
     steps:
       # ============================================
-      # 1. 检出代码
-      # ============================================
-      - name: ✅ Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      # ============================================
-      # 2. 环境初始化
+      # 1. 环境初始化
       # ============================================
       - name: 🔧 Setup Environment
         id: env
@@ -207,7 +199,7 @@ jobs:
           EOF
           
       # ============================================
-      # 3. 磁盘空间优化
+      # 2. 磁盘空间优化
       # ============================================
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
@@ -228,7 +220,12 @@ jobs:
           
           echo "Swap Status:"
           free -h
-          
+      # ============================================
+      # 3. 检出代码
+      # ============================================
+      - name: ✅ Checkout Code
+        uses: actions/checkout@v4
+              
       # ============================================
       # 4. 安装依赖
       # ============================================
@@ -275,7 +272,7 @@ jobs:
           mixkey: x86_64-${{ env.REPO_BRANCH }}
 
       # ============================================
-      # 8. Feeds 更新
+      # 7. Feeds 更新
       # ============================================
       - name: 📚 Update Feeds
         run: |
@@ -292,7 +289,7 @@ jobs:
           ./scripts/feeds install -a
           
       # ============================================
-      # 9. 自定义配置
+      # 8. 自定义配置
       # ============================================
       - name: 🎨 Custom Configuration
         run: |      
@@ -312,24 +309,15 @@ jobs:
           # 复制自定义文件
           [ -e files ] && mv files $OPENWRT_PATH/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-          
-          # 使用 find 命令设置权限
-          echo "🔧 Setting script permissions..."
-          find $GITHUB_WORKSPACE/scripts -type f -name "*.sh" -exec chmod +x {} \;
+          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+          chmod +x $DIY_SCRIPT
    
           # 切换到 OpenWrt 目录
           cd $OPENWRT_PATH
-          
-          # 尝试在其他位置查找脚本
-          echo "🔍 Searching for script files..."
-          find . -name "diy-x86_64_demo.sh" -type f 2>/dev/null
-          find . -name "preset-mihomo-core.sh" -type f 2>/dev/null
-          find . -name "preset-adguard-core.sh" -type f 2>/dev/null
-            
-          # 执行 DIY 脚本（使用完整路径）
-          chmod +x "$GITHUB_WORKSPACE/scripts/diy-x86_64_demo.sh"
-          chmod +x "$GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh"
-          hmod +x "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh"
+
+          $GITHUB_WORKSPACE/$DIY_SCRIPT
+          $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
+          $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
           
           # 执行 mihomo 脚本
           echo "⚡ Setting up Mihomo core..."
@@ -342,8 +330,6 @@ jobs:
           # 最终配置
           make defconfig
 
-          # 最终配置
-          make defconfig
           # 提取设备信息
           DEVICE_TARGET=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)
           DEVICE_SUBTARGET=$(grep '^CONFIG_TARGET_SUBTARGET=' .config | cut -d'"' -f2)
@@ -370,7 +356,7 @@ jobs:
           make defconfig  
           
       # ============================================
-      # 10. 下载包
+      # 9. 下载包
       # ============================================
       - name: 📥 Download Packages
         run: |
@@ -390,7 +376,7 @@ jobs:
           echo "✅ Download completed"
           
       # ============================================
-      # 11. 编译固件
+      # 10. 编译固件
       # ============================================
       - name: 🔨 Compile Firmware
         id: compile
@@ -441,7 +427,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
           
       # ============================================
-      # 12. 检查空间
+      # 11. 检查空间
       # ============================================
       - name: 💾 Check Space
         if: always()
@@ -453,7 +439,7 @@ jobs:
           free -h
           
       # ============================================
-      # 13. 整理文件
+      # 12. 整理文件
       # ============================================
       - name: 📦 Organize Files
         if: steps.compile.outputs.status == 'success'
@@ -515,7 +501,7 @@ jobs:
           echo "✅ Files organized successfully"
           
       # ============================================
-      # 14. 上传固件
+      # 13. 上传固件
       # ============================================
       - name: 📤 Upload Artifacts
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
