@@ -316,25 +316,17 @@ jobs:
           export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
           
           # 复制自定义文件
-          [ -d "$WORKSPACE/files" ] && cp -r "$WORKSPACE/files" .
+          [ -e files ] && mv files $OPENWRT_PATH/files
+          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
           
           # 执行自定义脚本
-          chmod +x "$WORKSPACE"/scripts/*.sh
-          
-          # 主配置脚本
-          if [ -f "$WORKSPACE/$DIY_SCRIPT" ]; then
-            chmod +x "$WORKSPACE/$DIY_SCRIPT"
-            "$WORKSPACE/$DIY_SCRIPT"
-          fi
-          
-          # 预设核心
-          for script in preset-mihomo-core.sh preset-adguard-core.sh; do
-            if [ -f "$WORKSPACE/scripts/$script" ]; then
-              "$WORKSPACE/scripts/$script" "$CLASH_KERNEL" || \
-                echo "⚠️ Warning: $script failed"
-            fi
-          done
-          
+          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+          chmod +x $DIY_SCRIPT
+          cd $OPENWRT_PATH
+          $GITHUB_WORKSPACE/$DIY_SCRIPT
+          $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
+          $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
+   
           # 最终配置
           make defconfig
 
