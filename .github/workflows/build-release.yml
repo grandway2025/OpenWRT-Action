@@ -51,15 +51,15 @@ on:
         type: string
         default: "0"
   # 定时构建
-  schedule:
-    - cron: '0 2 * * 5'  # 每周五凌晨2点
+  # schedule:
+  #   - cron: '0 2 * * 5'  # 每周五凌晨2点
   # 推送触发
-  push:
-    branches: [ main ]
-    paths:
-      - 'configs/x86_64.config'
-      - '.github/workflows/build-release.yml'
-      - 'scripts/diy-x86_64_demo.sh'
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'configs/x86_64.config'
+  #     - '.github/workflows/build-release.yml'
+  #     - 'scripts/diy-x86_64_demo.sh'
 # ============================================
 # 全局环境变量
 # ============================================
@@ -315,17 +315,10 @@ jobs:
           # 切换到 OpenWrt 目录
           cd $OPENWRT_PATH
 
+          # 执行脚本
           $GITHUB_WORKSPACE/$DIY_SCRIPT
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
           $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
-          
-          # 执行 mihomo 脚本
-          echo "⚡ Setting up Mihomo core..."
-          bash $GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh $CLASH_KERNEL
-          
-          # 执行 AdGuard 脚本
-          echo "🛡️ Setting up AdGuard core..."
-          bash $GITHUB_WORKSPACE/scripts/preset-adguard-core.sh $CLASH_KERNEL
           
           # 最终配置
           make defconfig
@@ -347,7 +340,7 @@ jobs:
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
           echo "📌 Latest Release: $LATEST_RELEASE"
           
-      - name: 🧹 清理构建目录 (Clean Build Directory)
+      - name: 🧹 Clean Build Directory
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cd $OPENWRT_PATH
