@@ -375,6 +375,14 @@ jobs:
           # 最终配置
           make defconfig
           
+      - name: 🧹 清理构建目录 (Clean Build Directory)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cd $OPENWRT_PATH
+          echo "缓存未命中，确保一个干净的构建环境..."
+          rm -rf build_dir tmp
+          make defconfig  
+          
       # ============================================
       # 10. 下载包
       # ============================================
