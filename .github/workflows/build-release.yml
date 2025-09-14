@@ -320,9 +320,16 @@ jobs:
           # 切换到 OpenWrt 目录
           cd $OPENWRT_PATH
           
+          # 尝试在其他位置查找脚本
+          echo "🔍 Searching for script files..."
+          find . -name "diy-x86_64_demo.sh" -type f 2>/dev/null
+          find . -name "preset-mihomo-core.sh" -type f 2>/dev/null
+          find . -name "preset-adguard-core.sh" -type f 2>/dev/null
+            
           # 执行 DIY 脚本（使用完整路径）
-          echo "🎯 Running DIY script..."
-          bash $GITHUB_WORKSPACE/$DIY_SCRIPT
+          chmod +x "$GITHUB_WORKSPACE/scripts/diy-x86_64_demo.sh"
+          chmod +x "$GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh"
+          hmod +x "$GITHUB_WORKSPACE/scripts/preset-adguard-core.sh"
           
           # 执行 mihomo 脚本
           echo "⚡ Setting up Mihomo core..."
