@@ -1,4 +1,4 @@
-- name: 🎨 Custom Configuration (Simplified)
+ - name: 🎨 Custom Configuration (Simplified)
   run: |
     # 导出配置
     export LAN="${{ github.event.inputs.lan_addr }}"
