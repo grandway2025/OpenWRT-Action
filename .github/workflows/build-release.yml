@@ -80,10 +80,6 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: X86_64
   
-  # 镜像源
-  MIRROR: https://raw.githubusercontent.com/grandway2025/OpenWRT-Action/main
-  GITEA: git.kejizero.online/zhao
-  
   # 系统设置
   TZ: Asia/Shanghai
   DEBIAN_FRONTEND: noninteractive
@@ -299,9 +295,7 @@ jobs:
       # 9. 自定义配置
       # ============================================
       - name: 🎨 Custom Configuration
-        run: |
-          cd $OPENWRT_PATH
-          
+        run: |      
           # 导出插件配置
           export ENABLE_DOCKER="${{ github.event.inputs.docker }}"
           export ENABLE_SSRP="${{ github.event.inputs.ssrp }}"
