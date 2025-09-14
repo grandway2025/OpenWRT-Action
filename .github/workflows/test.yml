@@ -1,24 +1,24 @@
 - name: 🎨 Custom Configuration (Simplified)
-        run: |
-          # 导出配置
-          export LAN="${{ github.event.inputs.lan_addr }}"
-          export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
+  run: |
+    # 导出配置
+    export LAN="${{ github.event.inputs.lan_addr }}"
+    export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
           
-          cd $OPENWRT_PATH
+    cd $OPENWRT_PATH
           
-          # 基础配置
-          cat >> .config << EOF
+    # 基础配置
+    cat >> .config << EOF
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 CONFIG_TARGET_x86_64_DEVICE_generic=y
 EOF
           
-          # 修改默认设置
-          sed -i "s/192.168.1.1/$LAN/g" package/base-files/files/bin/config_generate 2>/dev/null || true
+    # 修改默认设置
+    sed -i "s/192.168.1.1/$LAN/g" package/base-files/files/bin/config_generate 2>/dev/null || true
           
-          # 运行 defconfig
-          make defconfig
+    # 运行 defconfig
+    make defconfig
           
-          # 设置环境变量
-          echo "DEVICE_TARGET=x86" >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=64" >> $GITHUB_ENV
+    # 设置环境变量
+    echo "DEVICE_TARGET=x86" >> $GITHUB_ENV
+    echo "DEVICE_SUBTARGET=64" >> $GITHUB_ENV
