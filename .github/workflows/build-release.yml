@@ -272,13 +272,6 @@ jobs:
           echo "COMMIT_MESSAGE=$MESSAGE" >> $GITHUB_ENV
           echo "COMMIT_HASH=$HASH" >> $GITHUB_ENV
           
-          # 下载自定义 feeds
-          if [ -n "${{ env.FEEDS_CONF }}" ]; then
-            echo "📋 Downloading custom feeds.conf..."
-            curl -fsSL "${{ env.MIRROR }}/Customize/feeds/${{ env.FEEDS_CONF }}" \
-              -o feeds.conf.default || echo "⚠️ Custom feeds not found, using default"
-          fi
-          
       # ============================================
       # 6. 缓存管理
       # ============================================
@@ -328,7 +321,11 @@ jobs:
       - name: 📚 Update Feeds
         run: |
           cd $OPENWRT_PATH
-          
+          if [ -f "${{ github.workspace }}/main-repo/feeds.conf.default" ]; then
+            cp ${{ github.workspace }}/main-repo/feeds.conf.default .
+          else
+            echo "::warning::feeds.conf.default not found in main-repo. Using default OpenWrt feeds."
+          fi
           # 更新 feeds
           ./scripts/feeds update -a
           
