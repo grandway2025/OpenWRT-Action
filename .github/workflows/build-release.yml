@@ -277,36 +277,7 @@ jobs:
           clean: false
           prefix: ${{ env.OPENWRT_PATH }}
           mixkey: x86_64-${{ env.REPO_BRANCH }}
-          
-      # ============================================
-      # 7. 配置生成
-      # ============================================
-      - name: ⚙️ Generate Configuration
-        id: config
-        run: |
-          cd $OPENWRT_PATH
-          
-          # 复制基础配置
-          cp "$WORKSPACE/$CONFIG_FILE" .config
-          
-          # 生成默认配置获取目标信息
-          make defconfig > /dev/null 2>&1
-          
-          # 提取设备信息
-          DEVICE_TARGET=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)
-          DEVICE_SUBTARGET=$(grep '^CONFIG_TARGET_SUBTARGET=' .config | cut -d'"' -f2)
-          
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          
-          # 获取最新版本
-          LATEST_RELEASE=$(curl -sL "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
-            jq -r '.tag_name // "unknown"' | sed 's/^v//')
-          echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
-          
-          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
-          echo "📌 Latest Release: $LATEST_RELEASE"
-          
+
       # ============================================
       # 8. Feeds 更新
       # ============================================
@@ -366,6 +337,24 @@ jobs:
           
           # 最终配置
           make defconfig
+
+          # 提取设备信息
+          DEVICE_TARGET=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)
+          DEVICE_SUBTARGET=$(grep '^CONFIG_TARGET_SUBTARGET=' .config | cut -d'"' -f2)
+          
+          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+
+          echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV 
+          echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
+          
+          # 获取最新版本
+          LATEST_RELEASE=$(curl -sL "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
+            jq -r '.tag_name // "unknown"' | sed 's/^v//')
+          echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
+          
+          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
+          echo "📌 Latest Release: $LATEST_RELEASE"
           
       - name: 🧹 清理构建目录 (Clean Build Directory)
         if: steps.cache.outputs.cache-hit != 'true'
