@@ -294,13 +294,13 @@ jobs:
       - name: 🎨 Custom Configuration
         run: |      
           # 导出插件配置
-          export ENABLE_DOCKER="${{ github.event.inputs.docker }}"
-          export ENABLE_SSRP="${{ github.event.inputs.ssrp }}"
-          export ENABLE_PASSWALL="${{ github.event.inputs.passwall }}"
-          export ENABLE_NIKKI="${{ github.event.inputs.nikki }}"
-          export ENABLE_OPENCLASH="${{ github.event.inputs.openclash }}"
-          export ENABLE_LUCKY="${{ github.event.inputs.lucky }}"
-          export ENABLE_OAF="${{ github.event.inputs.oaf }}"
+          [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
+          [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
+          [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
+          [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
+          [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
+          [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
+          [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
           
           # 网络配置
           export LAN="${{ github.event.inputs.lan_addr }}"
