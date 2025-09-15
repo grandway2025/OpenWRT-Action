@@ -531,7 +531,7 @@ jobs:
             
             ### 📦 Included Plugins
             - Docker: ${{ github.event.inputs.docker && '✅' || '❌' }}
-            - SSR Plus+: ${{ github.event.inputs.ssrp && '✅' || '❌' }}
+            - ShadowSocksR Plus+: ${{ github.event.inputs.ssrp && '✅' || '❌' }}
             - Passwall: ${{ github.event.inputs.passwall && '✅' || '❌' }}
             - OpenClash: ${{ github.event.inputs.openclash && '✅' || '❌' }}
             - Lucky: ${{ github.event.inputs.lucky && '✅' || '❌' }}
