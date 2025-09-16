@@ -294,13 +294,13 @@ jobs:
       - name: 🎨 Custom Configuration
         run: |      
           # 导出插件配置
-          [ ${{ github.event.inputs.docker }} = 'true' ] && export ENABLE_DOCKER=y
-          [ ${{ github.event.inputs.ssrp }} = 'true' ] && export ENABLE_SSRP=y
-          [ ${{ github.event.inputs.passwall }} = 'true' ] && export ENABLE_PASSWALL=y
-          [ ${{ github.event.inputs.nikki }} = 'true' ] && export ENABLE_NIKKI=y
-          [ ${{ github.event.inputs.openclash }} = 'true' ] && export ENABLE_OPENCLASH=y
-          [ ${{ github.event.inputs.lucky }} = 'true' ] && export ENABLE_LUCKY=y
-          [ ${{ github.event.inputs.oaf }} = 'true' ] && export ENABLE_OAF=y
+          export ENABLE_DOCKER="${{ github.event.inputs.docker }}"
+          export ENABLE_SSRP="${{ github.event.inputs.ssrp }}"
+          export ENABLE_PASSWALL="${{ github.event.inputs.passwall }}"
+          export ENABLE_NIKKI="${{ github.event.inputs.nikki }}"
+          export ENABLE_OPENCLASH="${{ github.event.inputs.openclash }}"
+          export ENABLE_LUCKY="${{ github.event.inputs.lucky }}"
+          export ENABLE_OAF="${{ github.event.inputs.oaf }}"
           
           # 网络配置
           export LAN="${{ github.event.inputs.lan_addr }}"
@@ -308,12 +308,22 @@ jobs:
           
           # 复制自定义文件
           [ -e files ] && mv files $OPENWRT_PATH/files
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
           chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           chmod +x $DIY_SCRIPT
    
           # 切换到 OpenWrt 目录
           cd $OPENWRT_PATH
+
+          # 复制主仓库 configs 到源码目录
+          cp $GITHUB_WORKSPACE/${CONFIG_FILE} .config
+          # 按需追加功能组件 config（源文件都在主仓库 configs/）
+          [[ "${ENABLE_DOCKER}"     == "true" && -f $GITHUB_WORKSPACE/configs/config-docker    ]] && cat $GITHUB_WORKSPACE/configs/config-docker    >> .config
+          [[ "${ENABLE_SSRP}"       == "true" && -f $GITHUB_WORKSPACE/configs/config-ssrp      ]] && cat $GITHUB_WORKSPACE/configs/config-ssrp      >> .config
+          [[ "${ENABLE_PASSWALL}"   == "true" && -f $GITHUB_WORKSPACE/configs/config-passwall  ]] && cat $GITHUB_WORKSPACE/configs/config-passwall  >> .config
+          [[ "${ENABLE_NIKKI}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-nikki     ]] && cat $GITHUB_WORKSPACE/configs/config-nikki     >> .config
+          [[ "${ENABLE_OPENCLASH}"  == "true" && -f $GITHUB_WORKSPACE/configs/config-openclash ]] && cat $GITHUB_WORKSPACE/configs/config-openclash >> .config
+          [[ "${ENABLE_LUCKY}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-lucky     ]] && cat $GITHUB_WORKSPACE/configs/config-lucky     >> .config
+          [[ "${ENABLE_OAF}"        == "true" && -f $GITHUB_WORKSPACE/configs/config-oaf       ]] && cat $GITHUB_WORKSPACE/configs/config-oaf       >> .config
 
           # 执行脚本
           $GITHUB_WORKSPACE/$DIY_SCRIPT
@@ -464,8 +474,8 @@ jobs:
           rm -f feeds.buildinfo version.buildinfo
           
           # 提取内核版本
-          KERNEL_VERSION=$(grep '^kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
-          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
+          KERNEL=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
+          echo "KERNEL=$KERNEL" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           
           # 生成固件信息
@@ -474,7 +484,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$KERNEL_VERSION",
+            "kernel_version": "$KERNEL",
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
@@ -530,12 +540,12 @@ jobs:
             | **Password** | `${{ github.event.inputs.root_password }}` |
             
             ### 📦 Included Plugins
-            - Docker: ${{ github.event.inputs.docker && '✅' || '❌' }}
-            - ShadowSocksR Plus+: ${{ github.event.inputs.ssrp && '✅' || '❌' }}
-            - Passwall: ${{ github.event.inputs.passwall && '✅' || '❌' }}
-            - OpenClash: ${{ github.event.inputs.openclash && '✅' || '❌' }}
-            - Lucky: ${{ github.event.inputs.lucky && '✅' || '❌' }}
-            - OpenAppFilter: ${{ github.event.inputs.oaf && '✅' || '❌' }}
+            - Docker: ${{ github.event.inputs.docker == 'true' && '✅' || '❌' }}
+            - ShadowSocksR Plus+: ${{ github.event.inputs.ssrp == 'true' && '✅' || '❌' }}
+            - Passwall: ${{ github.event.inputs.passwall == 'true' && '✅' || '❌' }}
+            - OpenClash: ${{ github.event.inputs.openclash == 'true' && '✅' || '❌' }}
+            - Lucky: ${{ github.event.inputs.lucky == 'true' && '✅' || '❌' }}
+            - OpenAppFilter: ${{ github.event.inputs.oaf == 'true' && '✅' || '❌' }}
             
             ### 📝 Source Information
             - **Repository**: [${{ env.REPO_URL }}](${{ env.REPO_URL }})
