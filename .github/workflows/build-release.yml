@@ -302,7 +302,7 @@ jobs:
           export ENABLE_LUCKY="${{ github.event.inputs.lucky }}"
           export ENABLE_OAF="${{ github.event.inputs.oaf }}"
           
-          # 网络配置
+          # 导出其他配置 (如 LAN_ADDR, ROOT_PASSWORD)
           export LAN="${{ github.event.inputs.lan_addr }}"
           export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
           
