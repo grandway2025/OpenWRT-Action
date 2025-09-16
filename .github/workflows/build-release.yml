@@ -474,8 +474,8 @@ jobs:
           rm -f feeds.buildinfo version.buildinfo
           
           # 提取内核版本
-          KERNEL_VERSION=$(grep '^kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
-          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
+          KERNEL=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
+          echo "KERNEL=$KERNEL" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           
           # 生成固件信息
@@ -484,7 +484,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$KERNEL_VERSION",
+            "kernel_version": "$KERNEL",
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
