@@ -464,10 +464,27 @@ jobs:
           # 清理不需要的文件
           rm -f feeds.buildinfo version.buildinfo
           
-          # 提取内核版本
-          KERNEL=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
-          echo "KERNEL=$KERNEL" >> $GITHUB_ENV
+          # ======================== 核心修正部分 ========================
+          # 提取内核版本 (更稳健的方式)
+          # 从 .config 文件中提取形如 "5.15" 的版本号
+          KERNEL_VERSION=$(grep -o 'CONFIG_LINUX_[0-9]*_[0-9]*=y' $OPENWRT_PATH/.config | sed -e 's/CONFIG_LINUX_//' -e 's/=y//' -e 's/_/./')
+          
+          # 如果上述方法失败，则退回使用 manifest 文件作为备用方案
+          if [ -z "$KERNEL_VERSION" ]; then
+            echo "::warning::Could not determine kernel version from .config. Falling back to manifest."
+            KERNEL_VERSION=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}')
+          fi
+          
+          # 最终检查，如果仍然为空，则设为 "unknown"
+          if [ -z "$KERNEL_VERSION" ]; then
+            echo "::error::Failed to determine kernel version from both .config and manifest."
+            KERNEL_VERSION="unknown"
+          fi
+          
+          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "✅ Kernel version extracted: $KERNEL_VERSION"
+          # =============================================================
           
           # 生成固件信息
           cat > firmware_info.json << EOF
