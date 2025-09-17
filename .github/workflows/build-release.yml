@@ -331,9 +331,9 @@ jobs:
           echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
           echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
           
-          # 获取最新版本
+          # 获取最新版本 
           LATEST_RELEASE=$(curl -sL "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
-            jq -r '.tag_name // "unknown"' | sed 's/^v//')
+            jq -r '.tag_name // "unknown"' | sed 's/^v//' | grep -o '[0-9]*\.[0-9]*')
           echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
           
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
