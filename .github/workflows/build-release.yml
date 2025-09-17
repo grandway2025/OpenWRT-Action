@@ -492,7 +492,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$KERNEL",
+            "kernel_version": "$KERNEL_VERSION",
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
