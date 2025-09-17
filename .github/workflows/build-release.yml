@@ -292,19 +292,17 @@ jobs:
       # 8. 自定义配置
       # ============================================
       - name: 🎨 Custom Configuration
-        run: |      
-          # 导出插件配置
-          export ENABLE_DOCKER="${{ github.event.inputs.docker }}"
-          export ENABLE_SSRP="${{ github.event.inputs.ssrp }}"
-          export ENABLE_PASSWALL="${{ github.event.inputs.passwall }}"
-          export ENABLE_NIKKI="${{ github.event.inputs.nikki }}"
-          export ENABLE_OPENCLASH="${{ github.event.inputs.openclash }}"
-          export ENABLE_LUCKY="${{ github.event.inputs.lucky }}"
-          export ENABLE_OAF="${{ github.event.inputs.oaf }}"
-          
-          # 导出其他配置 (如 LAN_ADDR, ROOT_PASSWORD)
-          export LAN="${{ github.event.inputs.lan_addr }}"
-          export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
+        env:
+          LAN: ${{ github.event.inputs.lan_addr }}
+          ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
+          ENABLE_DOCKER: ${{ github.event.inputs.docker }}
+          ENABLE_SSRP: ${{ github.event.inputs.ssrp }}
+          ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
+          ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
+          ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
+          ENABLE_LUCKY: ${{ github.event.inputs.lucky }}
+          ENABLE_OAF: ${{ github.event.inputs.oaf }}
+        run: |
           
           # 复制自定义文件
           [ -e files ] && mv files $OPENWRT_PATH/files
@@ -464,26 +462,14 @@ jobs:
           # 清理不需要的文件
           rm -f feeds.buildinfo version.buildinfo
           
-          # ======================== 核心修正部分 ========================
-          # 提取内核版本 (更稳健的方式)
-          # 从 .config 文件中提取形如 "5.15" 的版本号
-          KERNEL_VERSION=$(grep -o 'CONFIG_LINUX_[0-9]*_[0-9]*=y' $OPENWRT_PATH/.config | sed -e 's/CONFIG_LINUX_//' -e 's/=y//' -e 's/_/./')
           
-          # 如果上述方法失败，则退回使用 manifest 文件作为备用方案
-          if [ -z "$KERNEL_VERSION" ]; then
-            echo "::warning::Could not determine kernel version from .config. Falling back to manifest."
-            KERNEL_VERSION=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}')
-          fi
-          
-          # 最终检查，如果仍然为空，则设为 "unknown"
-          if [ -z "$KERNEL_VERSION" ]; then
-            echo "::error::Failed to determine kernel version from both .config and manifest."
-            KERNEL_VERSION="unknown"
-          fi
-          
-          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
+          # 提取内核版本
+          FULL_KERNEL_VERSION=$(grep -m 1 '^kernel - ' *.manifest | sed -e 's/kernel - //' -e 's/ - .*//' || echo "unknown")
+      
+          # 输出到环境变量和日志
+          echo "KERNEL=$FULL_KERNEL_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-          echo "✅ Kernel version extracted: $KERNEL_VERSION"
+          echo "✅ Full Kernel version extracted: $FULL_KERNEL_VERSION"
           # =============================================================
           
           # 生成固件信息
@@ -492,7 +478,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$KERNEL_VERSION",
+            "kernel_version": "$FULL_KERNEL_VERSION", 
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
