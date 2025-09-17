@@ -269,7 +269,7 @@ jobs:
           skip: false
           clean: false
           prefix: ${{ env.OPENWRT_PATH }}
-          mixkey: x86_64-${{ env.REPO_BRANCH }}
+          mixkey: ${{ runner.os }}-${{ runner.arch }}-${{ env.REPO_BRANCH }}
 
       # ============================================
       # 7. Feeds 更新
