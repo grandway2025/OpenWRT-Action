@@ -469,7 +469,7 @@ jobs:
           # 输出到环境变量和日志
           echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-          echo "✅ Full Kernel version extracted: $FULL_KERNEL_VERSION"
+          echo "✅ Kernel version extracted: $KERNEL_VERSION"
           # =============================================================
           
           # 生成固件信息
