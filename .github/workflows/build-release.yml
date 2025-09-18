@@ -269,7 +269,7 @@ jobs:
           skip: false
           clean: false
           prefix: ${{ env.OPENWRT_PATH }}
-          mixkey: ${{ runner.os }}-${{ runner.arch }}-${{ env.REPO_BRANCH }}
+          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
 
       # ============================================
       # 7. Feeds 更新
@@ -464,10 +464,10 @@ jobs:
           
           
           # 提取内核版本
-          FULL_KERNEL_VERSION=$(grep -m 1 '^kernel - ' *.manifest | sed -e 's/kernel - //' -e 's/ - .*//' || echo "unknown")
+          echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
       
           # 输出到环境变量和日志
-          echo "KERNEL=$FULL_KERNEL_VERSION" >> $GITHUB_ENV
+          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "✅ Full Kernel version extracted: $FULL_KERNEL_VERSION"
           # =============================================================
@@ -478,7 +478,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$FULL_KERNEL_VERSION", 
+            "kernel_version": "$KERNEL_VERSION",
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
