@@ -269,7 +269,7 @@ jobs:
           skip: false
           clean: false
           prefix: ${{ env.OPENWRT_PATH }}
-          mixkey: x86_64-${{ env.REPO_BRANCH }}
+          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
 
       # ============================================
       # 7. Feeds 更新
@@ -292,19 +292,17 @@ jobs:
       # 8. 自定义配置
       # ============================================
       - name: 🎨 Custom Configuration
-        run: |      
-          # 导出插件配置
-          export ENABLE_DOCKER="${{ github.event.inputs.docker }}"
-          export ENABLE_SSRP="${{ github.event.inputs.ssrp }}"
-          export ENABLE_PASSWALL="${{ github.event.inputs.passwall }}"
-          export ENABLE_NIKKI="${{ github.event.inputs.nikki }}"
-          export ENABLE_OPENCLASH="${{ github.event.inputs.openclash }}"
-          export ENABLE_LUCKY="${{ github.event.inputs.lucky }}"
-          export ENABLE_OAF="${{ github.event.inputs.oaf }}"
-          
-          # 网络配置
-          export LAN="${{ github.event.inputs.lan_addr }}"
-          export ROOT_PASSWORD="${{ github.event.inputs.root_password }}"
+        env:
+          LAN: ${{ github.event.inputs.lan_addr }}
+          ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
+          ENABLE_DOCKER: ${{ github.event.inputs.docker }}
+          ENABLE_SSRP: ${{ github.event.inputs.ssrp }}
+          ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
+          ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
+          ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
+          ENABLE_LUCKY: ${{ github.event.inputs.lucky }}
+          ENABLE_OAF: ${{ github.event.inputs.oaf }}
+        run: |
           
           # 复制自定义文件
           [ -e files ] && mv files $OPENWRT_PATH/files
@@ -316,15 +314,6 @@ jobs:
 
           # 复制主仓库 configs 到源码目录
           cp $GITHUB_WORKSPACE/${CONFIG_FILE} .config
-          # 按需追加功能组件 config（源文件都在主仓库 configs/）
-          [[ "${ENABLE_DOCKER}"     == "true" && -f $GITHUB_WORKSPACE/configs/config-docker    ]] && cat $GITHUB_WORKSPACE/configs/config-docker    >> .config
-          [[ "${ENABLE_SSRP}"       == "true" && -f $GITHUB_WORKSPACE/configs/config-ssrp      ]] && cat $GITHUB_WORKSPACE/configs/config-ssrp      >> .config
-          [[ "${ENABLE_PASSWALL}"   == "true" && -f $GITHUB_WORKSPACE/configs/config-passwall  ]] && cat $GITHUB_WORKSPACE/configs/config-passwall  >> .config
-          [[ "${ENABLE_NIKKI}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-nikki     ]] && cat $GITHUB_WORKSPACE/configs/config-nikki     >> .config
-          [[ "${ENABLE_OPENCLASH}"  == "true" && -f $GITHUB_WORKSPACE/configs/config-openclash ]] && cat $GITHUB_WORKSPACE/configs/config-openclash >> .config
-          [[ "${ENABLE_LUCKY}"      == "true" && -f $GITHUB_WORKSPACE/configs/config-lucky     ]] && cat $GITHUB_WORKSPACE/configs/config-lucky     >> .config
-          [[ "${ENABLE_OAF}"        == "true" && -f $GITHUB_WORKSPACE/configs/config-oaf       ]] && cat $GITHUB_WORKSPACE/configs/config-oaf       >> .config
-
           # 执行脚本
           $GITHUB_WORKSPACE/$DIY_SCRIPT
           $GITHUB_WORKSPACE/scripts/preset-mihimo-core.sh $CLASH_KERNEL
@@ -342,9 +331,9 @@ jobs:
           echo "IP_ADDR=${{ github.event.inputs.lan_addr }}" >> $GITHUB_ENV
           echo "ROOT_PASSWORD=${{ github.event.inputs.root_password }}" >> $GITHUB_ENV
           
-          # 获取最新版本
+          # 获取最新版本 (已修正, 确保只提取第一个完整的版本号)
           LATEST_RELEASE=$(curl -sL "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
-            jq -r '.tag_name // "unknown"' | sed 's/^v//')
+            jq -r '.tag_name // "unknown"' | sed -n 's/.*-\([0-9]\+\.[0-9]\+\).*/\1/p' | head -n 1)
           echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
           
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
@@ -473,10 +462,15 @@ jobs:
           # 清理不需要的文件
           rm -f feeds.buildinfo version.buildinfo
           
+          
           # 提取内核版本
-          KERNEL=$(grep 'kernel' *.manifest 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
-          echo "KERNEL=$KERNEL" >> $GITHUB_ENV
+          echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
+      
+          # 输出到环境变量和日志
+          echo "KERNEL=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "✅ Kernel version extracted: $KERNEL_VERSION"
+          # =============================================================
           
           # 生成固件信息
           cat > firmware_info.json << EOF
@@ -484,7 +478,7 @@ jobs:
             "build_date": "${{ env.BUILD_DATE }}",
             "build_version": "${{ env.BUILD_VERSION }}",
             "build_id": "${{ env.BUILD_ID }}",
-            "kernel_version": "$KERNEL",
+            "kernel_version": "$KERNEL_VERSION",
             "target": "${{ env.DEVICE_TARGET }}",
             "subtarget": "${{ env.DEVICE_SUBTARGET }}",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
@@ -519,7 +513,7 @@ jobs:
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ env.FILE_DATE }}-OpenWrt-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
+          name: ${{ env.FILE_DATE }}-OpenWrt-${{ env.FIRMWARE_TAG }}-${{ env.LATEST_RELEASE }}
           tag: ${{ env.FIRMWARE_TAG }}-${{ env.BUILD_VERSION }}
           allowUpdates: true
           removeArtifacts: false
