@@ -21,10 +21,6 @@ on:
         description: "🐋 Docker 支持"
         type: boolean
         default: true
-      ssrp:
-        description: "🚀 ShadowSocksR Plus+"
-        type: boolean
-        default: true
       passwall:
         description: "🌐 Passwall"
         type: boolean
