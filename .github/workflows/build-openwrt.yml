@@ -202,9 +202,10 @@ jobs:
           fetch-depth: 1
               
       # ============================================
-      # 4. 多层缓存策略
+      # 4. 核心缓存策略 (优化版)
       # ============================================
       - name:  💾 Cache Source Code
+        if: github.event.inputs.force_clean != 'true'
         id: cache-source
         uses: actions/cache@v4
         with:
@@ -221,8 +222,9 @@ jobs:
           key: core-dl-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
           restore-keys: |
             core-dl-${{ env.CACHE_KEY }}-
-            core-dl-openwrt-${{ env.REPO_BRANCH }}-
-      - name: 💾 Cache Toolchain
+            core-dl-openwrt-${{ env.REPO_BRANCH }}-      
+      - name:  💾 Cache Toolchain
+        if: env.CACHE_TOOLCHAIN == 'true'
         id: cache-toolchain
         uses: actions/cache@v4
         with:
@@ -233,7 +235,22 @@ jobs:
           restore-keys: |
             core-tc-${{ env.CACHE_KEY }}-
             core-tc-openwrt-${{ env.REPO_BRANCH }}-
-            
+      - name:  📊 Cache Report
+        run: |
+          echo "=== Cache Efficiency Report ==="
+          echo "Source Code: ${{ steps.cache-source.outputs.cache-hit }}"
+          echo "Downloads: ${{ steps.cache-downloads.outputs.cache-hit }}"
+          echo "Toolchain: ${{ steps.cache-toolchain.outputs.cache-hit || 'disabled' }}"
+    
+          # 计算预估节省时间
+          SAVED_MINUTES=0
+          [ "${{ steps.cache-source.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 2))
+          [ "${{ steps.cache-downloads.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 15)) 
+          [ "${{ steps.cache-toolchain.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 30))
+    
+          echo "Estimated Time Saved: ~${SAVED_MINUTES} minutes"
+          echo "cache_efficiency=${SAVED_MINUTES}" >> $GITHUB_OUTPUT
+          
       # ============================================
       # 5. 环境安装
       # ============================================
