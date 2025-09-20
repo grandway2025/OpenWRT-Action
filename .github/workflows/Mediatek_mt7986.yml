@@ -20,10 +20,6 @@ on:
         default: "password"
         required: false
         type: string
-      docker:
-        description: "编译 Docker"
-        type: boolean
-        default: true
 env:
   REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
   REPO_BRANCH: openwrt-24.10-6.6
