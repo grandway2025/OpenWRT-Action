@@ -67,7 +67,11 @@ git clone https://github.com/sbwml/luci-app-openlist2 package/new/openlist --dep
 git clone https://github.com/zhiern/luci-app-socat package/new/luci-app-socat
 
 # luci-app-advancedplus
-# git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
+git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
+
+# luci-theme-kucat
+git clone https://github.com/sirpdboy/luci-theme-kucat.git package/new/kucat
+mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf package/new/kucat
 
 # openclash
 mkdir -p files/etc/openclash/core
@@ -77,14 +81,20 @@ GEOIP_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/downl
 GEOSITE_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
 CLASH_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/openclash"
 NIKKI_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/nikki"
+ARGON_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/argon"
+ADP_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/advancedplus"
 wget -qO- $CLASH_META_URL | tar xOvz > files/etc/openclash/core/clash_meta
 wget -qO- $GEOIP_URL > files/etc/openclash/GeoIP.dat
 wget -qO- $GEOSITE_URL > files/etc/openclash/GeoSite.dat
 wget -qO- $CLASH_URL > files/etc/config/openclash
 wget -qO- $NIKKI_URL > files/etc/config/nikki
+wget -qO- $ARGON_URL > files/etc/config/argon
+wget -qO- $ADP_URL > files/etc/config/advancedplus
 chmod +x files/etc/openclash/core/clash*
 chmod +x files/etc/config/openclash
 chmod +x files/etc/config/nikki
+chmod +x files/etc/config/argon
+chmod +x files/etc/config/advancedplus
 
 # adguardhome
 git clone https://git.kejizero.online/zhao/luci-app-adguardhome package/new/luci-app-adguardhome
@@ -109,6 +119,6 @@ git clone https://github.com/sbwml/packages_utils_containerd feeds/packages/util
 git clone https://github.com/sbwml/packages_utils_runc feeds/packages/utils/runc
 
 # default-settings 
-rm -rf package/emortal/default-settings
-git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
+# rm -rf package/emortal/default-settings
+# git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
 
