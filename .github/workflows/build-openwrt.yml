@@ -232,8 +232,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-          openwrt/staging_dir/host/bin
-          openwrt/staging_dir/host/include
+            openwrt/staging_dir/host/bin
+            openwrt/staging_dir/host/include
         key: host-tools-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
             
       # ============================================
