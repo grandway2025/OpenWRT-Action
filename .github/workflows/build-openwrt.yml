@@ -204,60 +204,35 @@ jobs:
       # ============================================
       # 4. 多层缓存策略
       # ============================================
-      - name: 💾 Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            /opt/hostedtoolcache
-            ~/.cache/pip
-            ~/.npm
-          key: deps-${{ runner.os }}-${{ hashFiles('**/package*.json', '**/requirements*.txt') }}
-          restore-keys: |
-            deps-${{ runner.os }}-
-            
-      - name: 💾 Cache OpenWrt Source
+      - name:  💾 Cache Source Code
         id: cache-source
         uses: actions/cache@v4
         with:
           path: openwrt
-          key: source-${{ env.CACHE_KEY }}-${{ hashFiles('.github/workflows/*.yml', 'configs/*.config') }}
+          key: core-src-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config', 'feeds.conf.default') }}
           restore-keys: |
-            source-${{ env.CACHE_KEY }}-
-            source-openwrt-${{ env.REPO_BRANCH }}-
-            
-      - name: 💾 Cache Downloads
+            core-src-${{ env.CACHE_KEY }}-
+            core-src-openwrt-${{ env.REPO_BRANCH }}-
+      - name:  💾 Cache Downloads
+        id: cache-downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
+          key: core-dl-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
           restore-keys: |
-            downloads-${{ env.CACHE_KEY }}-
-            downloads-openwrt-${{ env.REPO_BRANCH }}-
-            
+            core-dl-${{ env.CACHE_KEY }}-
+            core-dl-openwrt-${{ env.REPO_BRANCH }}-
       - name: 💾 Cache Toolchain
-        if: github.event.inputs.use_cache == 'true'
+        id: cache-toolchain
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/staging_dir/host
-            openwrt/build_dir/host
-          key: toolchain-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
+          key: core-tc-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
           restore-keys: |
-            toolchain-${{ env.CACHE_KEY }}-
-            toolchain-openwrt-${{ env.REPO_BRANCH }}-
-            
-      - name: 💾 Cache Build Directory
-        if: github.event.inputs.use_cache == 'true'
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/build_dir/target-*
-            openwrt/.ccache
-          key: build-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}-${{ github.sha }}
-          restore-keys: |
-            build-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}-
-            build-${{ env.CACHE_KEY }}-
+            core-tc-${{ env.CACHE_KEY }}-
+            core-tc-openwrt-${{ env.REPO_BRANCH }}-
             
       # ============================================
       # 5. 环境安装
