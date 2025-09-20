@@ -25,9 +25,15 @@ sed -i "s/DISTRIB_DESCRIPTION='*.*'/DISTRIB_DESCRIPTION='OpenWrt-$(date +%Y%m%d)
 sed -i "s/DISTRIB_REVISION='*.*'/DISTRIB_REVISION=' By grandway2025'/g" package/base-files/files/etc/openwrt_release
 sed -i "s|^OPENWRT_RELEASE=\".*\"|OPENWRT_RELEASE=\"OpenWrt定制版 \"|" package/base-files/files/usr/lib/os-release
 
-# argon && argon-config
-rm -rf feeds/luci/themes/luci-theme-argon
-git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
+# 删除软件依赖
+rm -rf feeds/packages/net/{v2ray-geodata,open-app-filter,shadowsocksr-libev,shadowsocks-rust,shadowsocks-libev}
+rm -rf feeds/packages/net/{tcping,trojan,trojan-plus,tuic-client,v2ray-core,v2ray-plugin,xray-core,xray-plugin,sing-box}
+rm -rf feeds/packages/net/{chinadns-ng,hysteria,mosdns,lucky,ddns-go,v2dat,golang}
+
+# 删除软件包
+rm -rf feeds/luci/applications/{luci-app-daed,luci-app-dae,luci-app-homeproxy,luci-app-openclash}
+rm -rf feeds/luci/applications/{luci-app-passwall,luci-app-passwall2,luci-app-ssr-plus,luci-app-vssr}
+rm -rf feeds/luci/applications/{luci-app-appfilter,luci-app-ddns-go,luci-app-lucky,luci-app-mosdns,luci-app-alist,luci-app-openlist}
 
 #添加额外软件包
 # golang 1.25
@@ -65,6 +71,10 @@ git clone https://github.com/sbwml/luci-app-openlist2 package/new/openlist --dep
 
 # socat
 git clone https://github.com/zhiern/luci-app-socat package/new/luci-app-socat
+
+# argon && argon-config
+rm -rf feeds/luci/themes/luci-theme-argon
+git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
 
 # luci-app-advancedplus
 git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
