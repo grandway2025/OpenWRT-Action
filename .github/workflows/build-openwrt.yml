@@ -228,16 +228,13 @@ jobs:
             feeds-openwrt-${{ env.REPO_BRANCH }}-
             
       # 仅在非强制清理时使用工具链缓存
-      - name: 💾 Cache Minimal Toolchain
-        if: github.event.inputs.use_cache == 'true' && github.event.inputs.force_clean != 'true'
+      - name:  💾 Cache Essential Host Tools
         uses: actions/cache@v4
         with:
           path: |
-            openwrt/staging_dir/host
-            openwrt/staging_dir/hostpkg
-          key: toolchain-host-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
-          restore-keys: |
-            toolchain-host-${{ env.CACHE_KEY }}-
+          openwrt/staging_dir/host/bin
+          openwrt/staging_dir/host/include
+        key: host-tools-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
             
       # ============================================
       # 5. 环境安装
