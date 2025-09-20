@@ -202,27 +202,34 @@ jobs:
           fetch-depth: 1
               
       # ============================================
-      # 4. 核心缓存策略 (优化版)
+      # 4. 智能分层缓存策略 (安全增强版)
       # ============================================
-      - name:  💾 Cache Source Code
+      - name: 💾 Cache Source Code
         if: github.event.inputs.force_clean != 'true'
         id: cache-source
         uses: actions/cache@v4
         with:
           path: openwrt
-          key: core-src-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config', 'feeds.conf.default') }}
+          key: ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/*.config', 'feeds.conf.default') }}-$(date +'%Y%m%d')
           restore-keys: |
-            core-src-${{ env.CACHE_KEY }}-
-            core-src-openwrt-${{ env.REPO_BRANCH }}-
+            ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-
+            ${{ github.workflow }}-src-
       - name:  💾 Cache Downloads
         id: cache-downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: core-dl-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
+          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
           restore-keys: |
-            core-dl-${{ env.CACHE_KEY }}-
-            core-dl-openwrt-${{ env.REPO_BRANCH }}-      
+            ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}-
+      - name: ✅ Verify Downloads
+        if: steps.cache-downloads.outputs.cache-hit == 'true'
+        run: |
+          cd openwrt/dl
+          echo "🔍 Verifying downloaded packages..."
+          find . -type f -exec test -s {} \; -print || echo "⚠️ Found empty files"
+          find . -type f -name "*.zip" -exec unzip -tq {} \; 2>/dev/null || true
+          find . -type f -name "*.tar.*" -exec tar -tf {} \; >/dev/null 2>&1 || true
       - name:  💾 Cache Toolchain
         if: env.CACHE_TOOLCHAIN == 'true'
         id: cache-toolchain
@@ -231,25 +238,23 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/staging_dir/host
-          key: core-tc-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
+          key: ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}-$(sha256sum feeds.conf.default | cut -d' ' -f1)
           restore-keys: |
-            core-tc-${{ env.CACHE_KEY }}-
-            core-tc-openwrt-${{ env.REPO_BRANCH }}-
-      - name:  📊 Cache Report
+            ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}-
+      - name: 📊 Cache Analytics
         run: |
-          echo "=== Cache Efficiency Report ==="
-          echo "Source Code: ${{ steps.cache-source.outputs.cache-hit }}"
-          echo "Downloads: ${{ steps.cache-downloads.outputs.cache-hit }}"
-          echo "Toolchain: ${{ steps.cache-toolchain.outputs.cache-hit || 'disabled' }}"
+          echo "=== 缓存效率报告 ==="
+          echo "📦 源码缓存: ${{ steps.cache-source.outputs.cache-hit }}"
+          echo "📥 下载缓存: ${{ steps.cache-downloads.outputs.cache-hit }} (验证 ${{ steps.verify-downloads.outcome }})"
+          echo "🛠️ 工具链缓存: ${{ steps.cache-toolchain.outputs.cache-hit || 'disabled' }}"
+          # 存储分析
+          echo "💾 存储占用:"
+          du -d1 -h openwrt 2>/dev/null || true
     
-          # 计算预估节省时间
-          SAVED_MINUTES=0
-          [ "${{ steps.cache-source.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 2))
-          [ "${{ steps.cache-downloads.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 15)) 
-          [ "${{ steps.cache-toolchain.outputs.cache-hit }}" = "true" ] && SAVED_MINUTES=$((SAVED_MINUTES + 30))
-    
-          echo "Estimated Time Saved: ~${SAVED_MINUTES} minutes"
-          echo "cache_efficiency=${SAVED_MINUTES}" >> $GITHUB_OUTPUT
+          # 命中率计算
+          HITS=$(( (${{ steps.cache-source.outputs.cache-hit == 'true' }} + ${{ steps.cache-downloads.outputs.cache-hit == 'true' }} + (${{ steps.cache-toolchain.outputs.cache-hit == 'true' }} || 0)) * 100 / 3 ))
+          echo "🏷️ 综合命中率: ${HITS}%"
+          echo "cache_score=${HITS}" >> $GITHUB_OUTPUT
           
       # ============================================
       # 5. 环境安装
