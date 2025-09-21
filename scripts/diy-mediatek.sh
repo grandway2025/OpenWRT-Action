@@ -74,7 +74,8 @@ rm -rf feeds/luci/applications/luci-app-openlist
 git clone https://github.com/sbwml/luci-app-openlist2 package/new/openlist --depth=1
 
 # socat
-git clone https://github.com/zhiern/luci-app-socat package/new/luci-app-socat
+git clone https://github.com/grandway2025/luci-app-socat package/new/socat
+mv -n package/new/socat/luci-app-socat package/new/luci-app-socat && rm -rf package/new/socat
 
 # argon && argon-config
 rm -rf feeds/luci/themes/luci-theme-argon
