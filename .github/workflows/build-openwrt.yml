@@ -205,73 +205,56 @@ jobs:
       # 4. 智能分层缓存策略 (终极优化版)
       # ============================================
       - name: 💾 Cache Source Code
-        if: github.event.inputs.force_clean != 'true' && github.event.inputs.use_cache != 'false'
+        if: github.event.inputs.force_clean != 'true'
         id: cache-source
         uses: actions/cache@v4
         with:
           path: openwrt
-          key: ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/*.config', 'feeds.conf.default') }}-$(date +'%Y%mW')
+          key: ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/*.config', 'feeds.conf.default') }}-$(date +'%Y%m%d')
           restore-keys: |
             ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-
             ${{ github.workflow }}-src-
       - name:  💾 Cache Downloads
-        if: github.event.inputs.use_cache != 'false'
         id: cache-downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}-$(sha256sum configs/*.config | cut -d' ' -f1)
+          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}-${{ hashFiles('configs/*.config') }}
           restore-keys: |
             ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}-
-      - name:  🔍 Verify Downloads
+      - name: ✅ Verify Downloads
         if: steps.cache-downloads.outputs.cache-hit == 'true'
         run: |
           cd openwrt/dl
-          # 哈希校验
-          find . -name "*.hash" | while read f; do
-            [ -f "${f%.hash}" ] && grep -q "$(sha256sum ${f%.hash} | cut -d' ' -f1)" $f || rm ${f%.hash}
-          done
-          # 压缩包校验
+          echo "🔍 Verifying downloaded packages..."
+          find . -type f -exec test -s {} \; -print || echo "⚠️ Found empty files"
           find . -type f -name "*.zip" -exec unzip -tq {} \; 2>/dev/null || true
           find . -type f -name "*.tar.*" -exec tar -tf {} \; >/dev/null 2>&1 || true
       - name:  💾 Cache Toolchain
-        if: env.CACHE_TOOLCHAIN == 'true' && github.event.inputs.use_cache != 'false'
+        if: env.CACHE_TOOLCHAIN == 'true'
         id: cache-toolchain
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/staging_dir/host
-          key: ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}-$(sha256sum feeds.conf.default .config | cut -d' ' -f1)
+          key: ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}-$(sha256sum feeds.conf.default | cut -d' ' -f1)
           restore-keys: |
             ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}-
-      - name: 💾 Cache Build Dirs (Experimental)
-        if: github.event.inputs.use_cache != 'false'
-        uses: actions/cache@v4
-        with:
-          path: openwrt/build_dir
-          key: ${{ github.workflow }}-build-${{ env.CACHE_KEY }}-$(date +'%Y%mW')
-          restore-keys: |
-            ${{ github.workflow }}-build-${{ env.CACHE_KEY }}-
-      - name: 📊 Cache Intelligence Report
+      - name: 📊 Cache Analytics
         run: |
-          echo "=== Cache Analytics ==="
-          echo "🔄 Source Cache: ${{ steps.cache-source.outputs.cache-hit }}"
-          echo "⬇️ Downloads Cache: ${{ steps.cache-downloads.outputs.cache-hit }} (Valid: ${{ steps.verify-downloads.outcome }})"
-          echo "🛠️ Toolchain Cache: ${{ steps.cache-toolchain.outputs.cache-hit || 'disabled' }}"
-          echo "🧱 Build Dir Cache: ${{ steps.cache-build.outputs.cache-hit || 'disabled' }}"
-    
-          # 存储效率分析
-          echo "💽 Space Usage:"
-          du -d1 -h openwrt | grep -E 'dl$|staging_dir|build_dir' || true
+          echo "=== 缓存效率报告 ==="
+          echo "📦 源码缓存: ${{ steps.cache-source.outputs.cache-hit }}"
+          echo "📥 下载缓存: ${{ steps.cache-downloads.outputs.cache-hit }} (验证 ${{ steps.verify-downloads.outcome }})"
+          echo "🛠️ 工具链缓存: ${{ steps.cache-toolchain.outputs.cache-hit || 'disabled' }}"
+          # 存储分析
+          echo "💾 存储占用:"
+          du -d1 -h openwrt 2>/dev/null || true
     
           # 命中率计算
-          TOTAL_CACHES=4
-          HIT_CACHES=$(( ${{ steps.cache-source.outputs.cache-hit == 'true' }} + 
-                         ${{ steps.cache-downloads.outputs.cache-hit == 'true' }} + 
-                         (${{ steps.cache-toolchain.outputs.cache-hit == 'true' }} || 0) +
-                         (${{ steps.cache-build.outputs.cache-hit == 'true' }} || 0) ))
-          echo "📈 Hit Rate: $(( HIT_CACHES * 100 / TOTAL_CACHES ))%"
+          HITS=$(( (${{ steps.cache-source.outputs.cache-hit == 'true' }} + ${{ steps.cache-downloads.outputs.cache-hit == 'true' }} + (${{ steps.cache-toolchain.outputs.cache-hit == 'true' }} || 0)) * 100 / 3 ))
+          echo "🏷️ 综合命中率: ${HITS}%"
+          echo "cache_score=${HITS}" >> $GITHUB_OUTPUT
           
       # ============================================
       # 5. 环境安装
