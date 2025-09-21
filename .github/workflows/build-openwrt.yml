@@ -33,10 +33,6 @@ on:
         description: "📦 Nikki"
         type: boolean
         default: true
-      openclash:
-        description: "⚡ OpenClash"
-        type: boolean
-        default: true
       oaf:
         description: "🔒 OpenAppFilter"
         type: boolean
