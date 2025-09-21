@@ -1,13 +1,9 @@
 #!/bin/bash
-
 # =====================
 # 配置参数
 # =====================
 # 脚本URL
 export mirror=https://raw.githubusercontent.com/grandway2025/OpenWRT-Action/main
-
-# 私有Gitea
-export gitea=git.kejizero.online/zhao
 
 # GitHub镜像
 export github="github.com"
@@ -60,7 +56,7 @@ sed -i 's/;)\s*\\/; \\/' include/feeds.mk
 
 # nginx - latest version
 rm -rf feeds/packages/net/nginx
-git clone https://$github/oppen321/feeds_packages_net_nginx -b openwrt-24.10 feeds/packages/net/nginx
+git clone https://$github//sbwml/feeds_packages_net_nginx -b openwrt-24.10 feeds/packages/net/nginx
 sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/g;s/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/net/nginx/files/nginx.init
 
 # nginx - ubus
@@ -218,16 +214,16 @@ curl -s $mirror/doc/patch/firewall4/nftables/0002-nftables-add-brcm-fullconenat-
 curl -s $mirror/doc/patch/firewall4/nftables/0003-drop-rej-file.patch > package/network/utils/nftables/patches/0003-drop-rej-file.patch
 
 # FullCone module
-git clone https://$gitea/nft-fullcone package/new/nft-fullcone
+git clone https://$github/grandway2025/nft-fullcone package/new/nft-fullcone
 
 # IPv6 NAT
-git clone https://$gitea/package_new_nat6 package/new/nat6
+git clone https://$github/grandway2025/package_new_nat6 package/new/nat6
 
 # natflow
-git clone https://$gitea/package_new_natflow package/new/natflow
+git clone https://$github/grandway2025/package_new_natflow package/new/natflow
 
 # sfe
-git clone https://$github/zhiern/shortcut-fe package/new/shortcut-fe
+git clone https://$github/grandway2025/shortcut-fe package/new/shortcut-fe
 
 # Patch Luci add nft_fullcone/bcm_fullcone & shortcut-fe & natflow & ipv6-nat & custom nft command option
 pushd feeds/luci
@@ -402,7 +398,7 @@ git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns
 git clone https://$github/destan19/OpenAppFilter package/new/OpenAppFilter
 
 # adguardhome
-git clone https://$gitea/luci-app-adguardhome package/new/luci-app-adguardhome
+git clone https://$github/grandway2025/luci-app-adguardhome package/new/luci-app-adguardhome
 
 # unzip
 rm -rf feeds/packages/utils/unzip
@@ -424,7 +420,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-nlbwmon/htdocs/lu
 
 # argon && argon-config
 rm -rf feeds/luci/themes/luci-theme-argon
-git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
+git clone https://$github/grandway2025/argon package/new/luci-theme-argon --depth=1
 
 # luci-app-advancedplus
 git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus
@@ -436,13 +432,17 @@ mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf 
 # lucky
 git clone https://$github/gdy666/luci-app-lucky.git package/new/lucky
 
+# luci-app-socat
+git clone https://$github/grandway2025/luci-app-socat package/new/socat
+mv -n package/new/socat/luci-app-socat package/new/luci-app-socat && rm -rf package/new/socat
+
 # custom packages pkgs
 rm -rf feeds/packages/utils/coremark
 git clone https://$github/sbwml/openwrt_pkgs package/new/custom --depth=1
 rm -rf package/new/custom/luci-app-adguardhome
 
 # autocore-arm
-git clone https://$gitea/autocore-arm package/new/autocore-arm
+git clone https://$github/grandway2025/autocore-arm package/new/autocore-arm
 
 sed -i 's/O2/O2 -march=x86-64-v2/g' include/target.mk
 
