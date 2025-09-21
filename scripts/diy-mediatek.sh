@@ -133,6 +133,6 @@ git clone https://github.com/sbwml/packages_utils_containerd feeds/packages/util
 git clone https://github.com/sbwml/packages_utils_runc feeds/packages/utils/runc
 
 # default-settings 
-# rm -rf package/emortal/default-settings
-# git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
+rm -rf package/emortal/default-settings
+git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
 
