@@ -202,7 +202,7 @@ jobs:
           fetch-depth: 1
               
       # ============================================
-      # 4. 智能分层缓存策略 (终极优化版)
+      # 4. 智能分层缓存策略 (安全增强版)
       # ============================================
       - name: 💾 Cache Source Code
         if: github.event.inputs.force_clean != 'true'
@@ -270,9 +270,17 @@ jobs:
       # ============================================
       - name: 📥 Prepare OpenWrt Source
         run: |
-          # 克隆源码
-          echo "🔄 Cloning OpenWrt source..."
-          git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+          if [ ! -d "openwrt" ] || [ "${{ github.event.inputs.force_clean }}" = "true" ]; then
+            echo "🔄 Cloning OpenWrt source..."
+            rm -rf openwrt
+            git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+          else
+            echo "✅ Using cached OpenWrt source"
+            cd openwrt
+            git fetch --depth=1 origin $REPO_BRANCH
+            git reset --hard FETCH_HEAD
+            git clean -fd
+          fi
           
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
@@ -287,8 +295,6 @@ jobs:
           COMMIT_MESSAGE=$MESSAGE
           COMMIT_HASH=$HASH
           EOF
-          
-          echo "✅ OpenWrt source prepared: $HASH"
           
       # ============================================
       # 7. Feeds 配置
