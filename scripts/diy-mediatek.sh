@@ -42,7 +42,7 @@ rm -rf feeds/luci/applications/{luci-app-appfilter,luci-app-ddns-go,luci-app-luc
 #添加额外软件包
 # golang 1.25
 rm -rf feeds/packages/lang/golang
-git clone https://git.kejizero.online/zhao/packages_lang_golang -b 25.x feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
 
 # SSRP & Passwall
 rm -rf feeds/packages/net/{xray-core,v2ray-core,v2ray-geodata,sing-box}
@@ -81,7 +81,7 @@ rm -rf feeds/luci/themes/luci-theme-argon
 git clone https://github.com/grandway2025/argon package/new/luci-theme-argon --depth=1
 
 # luci-app-advancedplus
-git clone https://$github/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
+git clone https://github.com/sirpdboy/luci-app-advancedplus.git package/new/luci-app-advancedplus --depth=1
 
 # luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-theme-kucat.git package/new/kucat
@@ -132,7 +132,13 @@ git clone https://github.com/sbwml/packages_utils_dockerd feeds/packages/utils/d
 git clone https://github.com/sbwml/packages_utils_containerd feeds/packages/utils/containerd
 git clone https://github.com/sbwml/packages_utils_runc feeds/packages/utils/runc
 
+# argon-settings 
+curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/Mediatek/argon/iconfont.ttf > package/new/luci-theme-argon/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.ttf
+curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/Mediatek/argon/iconfont.woff > package/new/luci-theme-argon/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.woff
+curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/Mediatek/argon/iconfont.woff2 > package/new/luci-theme-argon/luci-theme-argon/htdocs/luci-static/argon/fonts/iconfont.woff2
+curl -s https://raw.githubusercontent.com/grandway2025/Actions-OpenWrt/main/Customize/Mediatek/argon/cascade.css > package/new/luci-theme-argon/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
+
 # default-settings 
-rm -rf package/emortal/default-settings
-git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
+# rm -rf package/emortal/default-settings
+# git clone -b mediatek https://github.com/grandway2025/default-settings package/new/default-settings --depth=1
 
