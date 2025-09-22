@@ -71,6 +71,8 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
+  UPLOAD_ARTIFACTS: false    # 控制是否上传到Artifacts
+  UPLOAD_RELEASE: true      # 控制是否创建Release
   FIRMWARE_TAG: X86_64
   
   # 系统设置
@@ -533,8 +535,8 @@ jobs:
       # ============================================
       # 13. 上传 Artifacts
       # ============================================
-      - name: 📤 Upload Firmware
-        if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
+      - name: 📤 Upload Artifacts
+        if: steps.compile.outputs.status == 'success' && env.UPLOAD_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: OpenWrt-${{ env.DEVICE_TARGET }}-${{ env.FILE_DATE }}
@@ -546,7 +548,7 @@ jobs:
       # 14. 创建 Release（修复权限问题）
       # ============================================
       - name: 🚀 Create Release
-        if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+        if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.FILE_DATE }}-OpenWrt-${{ env.FIRMWARE_TAG }}
