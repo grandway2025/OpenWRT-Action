@@ -1,7 +1,6 @@
 # Author: P3TERX (Modified and Optimized)
 #=================================================
 name: 💻 Build OpenWrt (x86_64)
-# 添加权限
 permissions:
   contents: write
   actions: read
@@ -36,7 +35,7 @@ on:
       oaf:
         description: "🔒 OpenAppFilter"
         type: boolean
-        default: false  # 默认关闭避免依赖问题
+        default: false
       use_cache:
         description: "💾 使用缓存加速"
         type: boolean
@@ -57,25 +56,18 @@ on:
 # 全局环境变量
 # ============================================
 env:
-  # 源码仓库
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
-  
-  # 配置文件
   CONFIG_FILE: configs/x86_64.config
   DIY_SCRIPT: scripts/diy-x86_64_demo.sh
   FEEDS_CONF: feeds.conf.default
-  
-  # 编译设置
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  UPLOAD_ARTIFACTS: false    # 控制是否上传到Artifacts
-  UPLOAD_RELEASE: true      # 控制是否创建Release
+  UPLOAD_ARTIFACTS: false
+  UPLOAD_RELEASE: true
   FIRMWARE_TAG: X86_64
-  
-  # 系统设置
   TZ: Asia/Shanghai
   DEBIAN_FRONTEND: noninteractive
 # ============================================
@@ -99,30 +91,26 @@ jobs:
     
     steps:
       # ============================================
-      # 1. 初始化
+      # 1. 环境初始化
       # ============================================
       - name: 🔧 Setup Environment
         id: env
         run: |
-          # 时区设置
+          # 时区和Git配置
           sudo timedatectl set-timezone "$TZ"
-          
-          # Git 配置
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # 生成构建信息
+          # 构建信息
           VERSION=$(date +'%Y.%m.%d')
           DATE=$(date +'%Y-%m-%d %H:%M:%S')
           BUILD_ID="${{ github.run_number }}-${GITHUB_SHA::7}"
           FILE_DATE=$(date +'%Y.%m.%d-%H%M')
-          TAG_TIME=$(date +'%Y.%m.%d')
           
-          # 系统信息
+          # 系统资源计算
           PROC_COUNT=$(nproc)
           MEM_GB=$(($(free -m | awk '/^Mem:/{print $2}') / 1024))
           
-          # 计算并行任务数
           if [ "${{ github.event.inputs.parallel_jobs }}" = "0" ]; then
             JOBS=$((MEM_GB / 2))
             JOBS=$((JOBS > PROC_COUNT ? PROC_COUNT : JOBS))
@@ -131,65 +119,54 @@ jobs:
             JOBS="${{ github.event.inputs.parallel_jobs }}"
           fi
           
-          # 调试模式
+          BUILD_FLAGS=""
           if [[ "${{ github.event.inputs.debug_mode }}" == "true" ]]; then
             BUILD_FLAGS="V=s"
-          else
-            BUILD_FLAGS=""
           fi
           
+          # 缓存键优化
+          CONFIG_HASH=$(echo "${{ github.event.inputs.docker }}${{ github.event.inputs.passwall }}${{ github.event.inputs.nikki }}${{ github.event.inputs.oaf }}" | sha256sum | cut -d' ' -f1 | head -c 8)
+          WEEK_KEY=$(date +'%Y%U')  # 使用年+周数作为缓存周期
+          CACHE_KEY="$WEEK_KEY-$CONFIG_HASH"
+          
           # 输出环境变量
-          cat << EOF >> $GITHUB_ENV
-          BUILD_VERSION=$VERSION
-          BUILD_DATE=$DATE
-          BUILD_ID=$BUILD_ID
-          FILE_DATE=$FILE_DATE
-          TAG_TIME=$TAG_TIME
-          PROC_COUNT=$PROC_COUNT
-          MEM_GB=$MEM_GB
-          COMPILE_JOBS=$JOBS
-          BUILD_FLAGS=$BUILD_FLAGS
-          EOF
-          
-          # 设置缓存键（修复缓存键生成）
-          CONFIG_HASH=$(echo "${{ github.event.inputs.docker }}${{ github.event.inputs.passwall }}${{ github.event.inputs.openclash }}${{ github.event.inputs.oaf }}" | sha256sum | cut -d' ' -f1 | head -c 8)
-          CACHE_KEY="openwrt-${{ env.REPO_BRANCH }}-x86_64-$CONFIG_HASH-$(date +'%Y%mW%u')"
-          echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_ENV
-          
+          {
+            echo "BUILD_VERSION=$VERSION"
+            echo "BUILD_DATE=$DATE"
+            echo "BUILD_ID=$BUILD_ID"
+            echo "FILE_DATE=$FILE_DATE"
+            echo "PROC_COUNT=$PROC_COUNT"
+            echo "MEM_GB=$MEM_GB"
+            echo "COMPILE_JOBS=$JOBS"
+            echo "BUILD_FLAGS=$BUILD_FLAGS"
+            echo "CACHE_KEY=$CACHE_KEY"
+          } >> $GITHUB_ENV
       - name: 📊 Display System Information
         run: |
-          cat << EOF
-          =====================================
+          echo "=====================================
           📊 System Information
-          =====================================
-          CPU Model: $(lscpu | grep 'Model name' | cut -d':' -f2 | xargs)
-          CPU Cores: ${{ env.PROC_COUNT }}
-          Memory: ${{ env.MEM_GB }}GB
-          Compile Jobs: ${{ env.COMPILE_JOBS }}
-          Kernel: $(uname -r)
-          OS: $(lsb_release -ds)
-          Build Version: ${{ env.BUILD_VERSION }}
-          Build ID: ${{ env.BUILD_ID }}
-          Cache Key: ${{ env.CACHE_KEY }}
-          =====================================
-          EOF
-          
+          ====================================="
+          echo "CPU: $(lscpu | grep 'Model name' | cut -d':' -f2 | xargs)"
+          echo "Cores: $PROC_COUNT | Memory: ${MEM_GB}GB | Jobs: $COMPILE_JOBS"
+          echo "OS: $(lsb_release -ds) | Kernel: $(uname -r)"
+          echo "Build: $BUILD_VERSION ($BUILD_ID)"
+          echo "Cache Key: $CACHE_KEY"
+          echo "====================================="
       # ============================================
-      # 2. 磁盘空间优化
+      # 2. 系统优化
       # ============================================
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
-          
       - name: 💾 Setup Swap & Memory Optimization
         run: |
-          # 创建 swap
+          # 创建并启用swap
           sudo fallocate -l 8G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
           
-          # 优化内存管理
-          cat << EOF | sudo tee -a /etc/sysctl.conf
+          # 内存优化
+          sudo tee -a /etc/sysctl.conf >/dev/null <<EOF
           vm.swappiness=10
           vm.vfs_cache_pressure=50
           vm.dirty_ratio=15
@@ -200,7 +177,6 @@ jobs:
           
           echo "Memory status:"
           free -h
-      
       # ============================================
       # 3. 代码检出
       # ============================================
@@ -208,9 +184,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-              
       # ============================================
-      # 4. 优化缓存策略
+      # 4. 缓存策略（修复警告）
       # ============================================
       - name: 💾 Cache Source Code
         if: github.event.inputs.force_clean != 'true' && github.event.inputs.use_cache == 'true'
@@ -221,9 +196,7 @@ jobs:
           key: ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
           restore-keys: |
             ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-
-            ${{ github.workflow }}-src-
-          save-always: false
-          
+          # 移除已废弃的 save-always
       - name: 💾 Cache Downloads
         if: github.event.inputs.use_cache == 'true'
         id: cache-downloads
@@ -232,8 +205,7 @@ jobs:
           path: openwrt/dl
           key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}
           restore-keys: |
-            ${{ github.workflow }}-dl-${{ env.REPO_BRANCH }}-
-            
+            ${{ github.workflow }}-dl-
       - name: 💾 Cache Toolchain
         if: env.CACHE_TOOLCHAIN == 'true' && github.event.inputs.use_cache == 'true'
         id: cache-toolchain
@@ -244,81 +216,127 @@ jobs:
             openwrt/staging_dir/host
           key: ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}
           restore-keys: |
-            ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-
-      - name: 📊 Cache Status Report  
-        run: |
-          echo "=== 缓存状态报告 ==="
-          echo "📦 源码缓存: ${{ steps.cache-source.outputs.cache-hit }}"
-          echo "📥 下载缓存: ${{ steps.cache-downloads.outputs.cache-hit }}"
-          echo "🛠️ 工具链缓存: ${{ steps.cache-toolchain.outputs.cache-hit }}"
-          echo "🔑 缓存键: ${{ env.CACHE_KEY }}"
-          
+            ${{ github.workflow }}-tc-
       # ============================================
       # 5. 环境安装
       # ============================================
       - name: 🛠️ Build System Setup
         uses: sbwml/actions@openwrt-build-setup
-            
       - name: 📦 Install LLVM
         uses: sbwml/actions@install-llvm
-        
       # ============================================
-      # 6. 源码处理（修复缓存问题）
+      # 6. 源码处理（完全修复）
       # ============================================
       - name: 📥 Prepare OpenWrt Source
         run: |
-          if [ ! -d "openwrt" ] || [ "${{ github.event.inputs.force_clean }}" = "true" ] || [ "${{ steps.cache-source.outputs.cache-hit }}" != "true" ]; then
+          # 首先验证分支是否存在
+          if ! git ls-remote --heads "$REPO_URL" "$REPO_BRANCH" &>/dev/null; then
+            echo "❌ Branch $REPO_BRANCH not found in $REPO_URL"
+            echo "Available branches:"
+            git ls-remote --heads "$REPO_URL" | head -10
+            exit 1
+          fi
+          
+          NEED_CLONE=false
+          
+          # 判断是否需要重新克隆
+          if [ ! -d "openwrt" ]; then
+            echo "📁 No source directory found"
+            NEED_CLONE=true
+          elif [ "${{ github.event.inputs.force_clean }}" = "true" ]; then
+            echo "🧹 Force clean requested"
+            NEED_CLONE=true
+          elif [ "${{ steps.cache-source.outputs.cache-hit }}" != "true" ]; then
+            echo "💾 Cache miss"
+            NEED_CLONE=true
+          else
+            echo "✅ Checking cached source integrity..."
+            cd openwrt
+            
+            # 验证git仓库完整性
+            if [ ! -d ".git" ] || ! git status &>/dev/null; then
+              echo "⚠️ Git repository corrupted"
+              NEED_CLONE=true
+            else
+              # 尝试安全更新
+              if git fetch --depth=1 origin "$REPO_BRANCH" &>/dev/null; then
+                git reset --hard FETCH_HEAD &>/dev/null || NEED_CLONE=true
+                git clean -fd &>/dev/null || true
+                echo "✅ Successfully updated cached source"
+              else
+                echo "⚠️ Fetch failed, will re-clone"
+                NEED_CLONE=true
+              fi
+            fi
+            cd ..
+          fi
+          
+          # 执行克隆（如果需要）
+          if [ "$NEED_CLONE" = "true" ]; then
             echo "🔄 Cloning fresh OpenWrt source..."
             rm -rf openwrt
-            git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-          else
-            echo "✅ Using cached OpenWrt source"
-            cd openwrt
-            # 安全的缓存更新
-            if [ -d ".git" ]; then
-              git fetch --depth=1 origin $REPO_BRANCH || echo "⚠️ Fetch failed, using cached version"
-              git reset --hard FETCH_HEAD || echo "⚠️ Reset failed, using cached version"
-              git clean -fd || echo "⚠️ Clean failed"
-            else
-              echo "⚠️ No .git directory, re-cloning..."
-              cd ..
-              rm -rf openwrt
-              git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-            fi
+            
+            # 重试机制
+            for attempt in 1 2 3; do
+              echo "📥 Clone attempt $attempt/3..."
+              if git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt; then
+                break
+              else
+                echo "❌ Clone attempt $attempt failed"
+                rm -rf openwrt
+                if [ $attempt -lt 3 ]; then
+                  sleep 10
+                else
+                  echo "❌ All clone attempts failed"
+                  exit 1
+                fi
+              fi
+            done
+          fi
+          
+          # 验证和设置环境
+          if [ ! -d "openwrt" ]; then
+            echo "❌ OpenWrt source directory not found"
+            exit 1
           fi
           
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           
           # 获取提交信息
-          COMMIT_INFO=$(git log -1 --pretty=format:'%an|%ci|%s|%H' 2>/dev/null || echo "Unknown||||")
-          IFS='|' read -r AUTHOR DATE MESSAGE HASH <<< "$COMMIT_INFO"
+          if git log -1 --pretty=format:'%an|%ci|%s|%H' &>/dev/null; then
+            COMMIT_INFO=$(git log -1 --pretty=format:'%an|%ci|%s|%H')
+            IFS='|' read -r AUTHOR DATE MESSAGE HASH <<< "$COMMIT_INFO"
+          else
+            AUTHOR="Unknown"
+            DATE="Unknown"
+            MESSAGE="Unknown"
+            HASH="Unknown"
+          fi
           
-          cat << EOF >> $GITHUB_ENV
-          COMMIT_AUTHOR=${AUTHOR:-Unknown}
-          COMMIT_DATE=${DATE:-Unknown}
-          COMMIT_MESSAGE=${MESSAGE:-Unknown}
-          COMMIT_HASH=${HASH:-Unknown}
-          EOF
-          
+          {
+            echo "COMMIT_AUTHOR=${AUTHOR}"
+            echo "COMMIT_DATE=${DATE}"
+            echo "COMMIT_MESSAGE=${MESSAGE}"
+            echo "COMMIT_HASH=${HASH}"
+          } >> $GITHUB_ENV
       # ============================================
       # 7. Feeds 配置
       # ============================================
       - name: 📚 Configure Feeds
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH"
           
-          # 复制 feeds 配置
+          # 复制feeds配置
           if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
-            cp ${{ github.workspace }}/feeds.conf.default .
+            cp "${{ github.workspace }}/feeds.conf.default" .
           fi
           
-          # 更新 feeds
+          # 更新和安装feeds
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          
       # ============================================
-      # 8. 自定义配置（修复 OAF 依赖问题）
+      # 8. 自定义配置
       # ============================================
       - name: 🎨 Apply Custom Configuration
         env:
@@ -327,31 +345,29 @@ jobs:
           ENABLE_DOCKER: ${{ github.event.inputs.docker }}
           ENABLE_PASSWALL: ${{ github.event.inputs.passwall }}
           ENABLE_NIKKI: ${{ github.event.inputs.nikki }}
-          ENABLE_OPENCLASH: ${{ github.event.inputs.openclash }}
           ENABLE_OAF: ${{ github.event.inputs.oaf }}
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH"
           
           # 复制自定义文件
-          [ -e ${{ github.workspace }}/files ] && cp -r ${{ github.workspace }}/files .
+          [ -e "${{ github.workspace }}/files" ] && cp -r "${{ github.workspace }}/files" .
           
           # 复制配置文件
-          cp ${{ github.workspace }}/${CONFIG_FILE} .config
+          cp "${{ github.workspace }}/$CONFIG_FILE" .config
           
           # 执行自定义脚本
-          chmod +x ${{ github.workspace }}/scripts/*.sh
-          chmod +x ${{ github.workspace }}/$DIY_SCRIPT
+          find "${{ github.workspace }}/scripts" -name "*.sh" -exec chmod +x {} \;
+          chmod +x "${{ github.workspace }}/$DIY_SCRIPT"
           
-          ${{ github.workspace }}/$DIY_SCRIPT
-          ${{ github.workspace }}/scripts/preset-mihimo-core.sh $CLASH_KERNEL
-          ${{ github.workspace }}/scripts/preset-adguard-core.sh $CLASH_KERNEL
+          "${{ github.workspace }}/$DIY_SCRIPT"
+          "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL"
+          "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL"
           
-          # 修复 OAF 配置问题
-          if [ "${{ github.event.inputs.oaf }}" = "true" ]; then
+          # OAF配置处理
+          if [ "$ENABLE_OAF" = "true" ]; then
             echo "🔧 Configuring OpenAppFilter..."
-            # 移除可能冲突的配置
             sed -i '/CONFIG_PACKAGE_kmod-oaf/d' .config
-            # 重新添加正确的配置
+            sed -i '/CONFIG_PACKAGE_appfilter/d' .config
             echo "CONFIG_PACKAGE_kmod-oaf=y" >> .config
             echo "CONFIG_PACKAGE_appfilter=y" >> .config
           else
@@ -362,89 +378,76 @@ jobs:
             echo "# CONFIG_PACKAGE_appfilter is not set" >> .config
           fi
           
-          # 生成最终配置
+          # 生成配置
           make defconfig
           
-          # 验证配置
-          if ! make -n download >/dev/null 2>&1; then
-            echo "⚠️ Configuration has issues, attempting to fix..."
-            make menuconfig
-            make defconfig
-          fi
+          # 提取目标信息
+          DEVICE_TARGET=$(awk -F'"' '/^CONFIG_TARGET_BOARD=/{print $2}' .config)
+          DEVICE_SUBTARGET=$(awk -F'"' '/^CONFIG_TARGET_SUBTARGET=/{print $2}' .config)
           
-          # 提取设备信息
-          DEVICE_TARGET=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)
-          DEVICE_SUBTARGET=$(grep '^CONFIG_TARGET_SUBTARGET=' .config | cut -d'"' -f2)
-          
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          
+          {
+            echo "DEVICE_TARGET=$DEVICE_TARGET"
+            echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
+          } >> $GITHUB_ENV
       # ============================================
-      # 9. 清理构建目录（如果需要）
+      # 9. 清理构建目录
       # ============================================
       - name: 🧹 Clean Build Directory
         if: github.event.inputs.force_clean == 'true'
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH"
           echo "🧹 Force cleaning build directory..."
           make dirclean
           make defconfig
-          
       # ============================================
-      # 10. 下载依赖包（增强错误处理）
+      # 10. 下载依赖包
       # ============================================
       - name: 📥 Download Packages
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH"
           
           echo "📥 Starting package download..."
           
-          # 首次尝试并行下载
+          # 多线程下载
           if make download -j$((COMPILE_JOBS + 1)) 2>&1 | tee download.log; then
-            echo "✅ Initial download successful"
+            echo "✅ Download completed successfully"
           else
-            echo "⚠️ Initial download had issues, retrying..."
-            
-            # 检查并清理失败的下载
-            echo "🔍 Checking for failed downloads..."
-            find dl -size -1024c -exec ls -l {} \; 2>/dev/null || true
+            echo "⚠️ Download had issues, cleaning and retrying..."
             find dl -size -1024c -delete 2>/dev/null || true
             
-            # 单线程重试
-            echo "🔄 Retrying with single thread..."
-            make download -j1 2>&1 | tee download_retry.log || {
-              echo "❌ Download failed even with retry"
-              echo "=== Download error log ==="
-              tail -n 50 download_retry.log 2>/dev/null || true
-              # 不要因为下载失败就退出，让编译尝试继续
-            }
+            if make download -j1 2>&1 | tee download_retry.log; then
+              echo "✅ Retry download successful"
+            else
+              echo "❌ Download failed, but continuing with compilation..."
+              tail -n 20 download_retry.log || true
+            fi
           fi
           
-          echo "📊 Download summary:"
-          ls -la dl/ | wc -l || echo "Unable to count downloads"
-          
+          echo "📊 Downloaded packages: $(find dl -type f | wc -l)"
       # ============================================
-      # 11. 编译固件（增强错误处理）
+      # 11. 编译固件
       # ============================================
       - name: 🔨 Compile Firmware
         id: compile
         timeout-minutes: 600
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH"
           
-          # 启用 ccache
+          # ccache配置
           export USE_CCACHE=1
-          export CCACHE_DIR=$PWD/.ccache
+          export CCACHE_DIR="$PWD/.ccache"
           ccache -M 5G
-          ccache -s
+          ccache -z  # 重置统计
           
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           
-          # 渐进式编译策略
+          # 编译函数
           compile_with_jobs() {
             local jobs=$1
-            echo "🔧 Attempting compilation with $jobs jobs..."
-            if make -j$jobs $BUILD_FLAGS 2>&1 | tee "compile_j${jobs}.log"; then
+            local log_file="compile_j${jobs}.log"
+            echo "🔧 Compiling with $jobs jobs..."
+            
+            if timeout 500m make -j"$jobs" $BUILD_FLAGS 2>&1 | tee "$log_file"; then
               echo "✅ Compilation successful with $jobs jobs"
               return 0
             else
@@ -453,32 +456,34 @@ jobs:
             fi
           }
           
-          # 尝试不同的并行度
-          SUCCESS=false
-          if compile_with_jobs $COMPILE_JOBS; then
+          # 渐进式编译策略
+          if compile_with_jobs "$COMPILE_JOBS"; then
             SUCCESS=true
-          elif compile_with_jobs $((COMPILE_JOBS/2)); then
+          elif [ "$COMPILE_JOBS" -gt 2 ] && compile_with_jobs $((COMPILE_JOBS/2)); then
             SUCCESS=true
-          elif compile_with_jobs 1; then
+          elif [ "$COMPILE_JOBS" -gt 1 ] && compile_with_jobs 1; then
             SUCCESS=true
           else
             echo "❌ All compilation attempts failed"
             
-            # 输出详细错误信息
-            echo "=== Latest compilation log tail ==="
-            find . -name "compile_j*.log" -exec tail -n 50 {} \; 2>/dev/null || echo "No compile logs found"
+            # 错误诊断
+            echo "=== Build Error Analysis ==="
+            if [ -f "compile_j1.log" ]; then
+              echo "Last 100 lines of single-threaded build:"
+              tail -n 100 compile_j1.log
+            fi
             
-            echo "=== Failed packages ==="
-            find logs -name "*.log" -exec echo "=== {} ===" \; -exec tail -n 20 {} \; 2>/dev/null || true
+            echo "=== Failed Package Logs ==="
+            find logs -name "*.log" -newermt "1 hour ago" -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
             
             exit 1
           fi
           
-          # 显示 ccache 统计
+          # ccache统计
+          echo "=== ccache Statistics ==="
           ccache -s
           
           echo "status=success" >> $GITHUB_OUTPUT
-          
       # ============================================
       # 12. 整理固件文件
       # ============================================
@@ -486,31 +491,34 @@ jobs:
         if: steps.compile.outputs.status == 'success'
         id: organize
         run: |
-          cd $OPENWRT_PATH/bin/targets/*/*
+          cd "$OPENWRT_PATH/bin/targets"/*/*
           
-          echo "=== Generated files ==="
+          echo "=== Generated Files ==="
           ls -lah
           
           # 提取内核版本
-          KERNEL_VERSION=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ' 2>/dev/null || echo "unknown")
+          KERNEL_VERSION="unknown"
+          if [ -f *.manifest ]; then
+            KERNEL_VERSION=$(awk '/^kernel/{print $2}' *.manifest | head -1 | sed 's/^[^-]*-//' || echo "unknown")
+          fi
           
-          # 保存配置文件
-          cp $OPENWRT_PATH/.config build.config
+          # 保存构建配置
+          cp "$OPENWRT_PATH/.config" build.config
           
-          # 压缩内核模块
+          # 处理内核模块
           if [ -d packages ]; then
             tar -czf kernel-modules.tar.gz packages/
             rm -rf packages
           fi
           
-          # 清理不必要的文件
+          # 清理临时文件
           rm -f feeds.buildinfo version.buildinfo
           
-          # 生成固件信息文件
-          cat > firmware_info.json << EOF
+          # 生成固件信息
+          cat > firmware_info.json <<EOF
           {
             "build_date": "$BUILD_DATE",
-            "build_version": "$BUILD_VERSION",
+            "build_version": "$BUILD_VERSION", 
             "build_id": "$BUILD_ID",
             "kernel_version": "$KERNEL_VERSION",
             "target": "$DEVICE_TARGET",
@@ -520,18 +528,21 @@ jobs:
             "plugins": {
               "docker": ${{ github.event.inputs.docker }},
               "passwall": ${{ github.event.inputs.passwall }},
-              "openclash": ${{ github.event.inputs.openclash }},
               "nikki": ${{ github.event.inputs.nikki }},
               "oaf": ${{ github.event.inputs.oaf }}
             }
           }
           EOF
           
-          echo "firmware_path=$PWD" >> $GITHUB_OUTPUT
-          echo "kernel_version=$KERNEL_VERSION" >> $GITHUB_OUTPUT
-          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          {
+            echo "firmware_path=$PWD"
+            echo "kernel_version=$KERNEL_VERSION"
+          } >> $GITHUB_OUTPUT
           
+          {
+            echo "KERNEL_VERSION=$KERNEL_VERSION"
+            echo "FIRMWARE_PATH=$PWD"
+          } >> $GITHUB_ENV
       # ============================================
       # 13. 上传 Artifacts
       # ============================================
@@ -543,13 +554,12 @@ jobs:
           path: ${{ env.FIRMWARE_PATH }}
           retention-days: 30
           compression-level: 6
-          
       # ============================================
-      # 14. 创建 Release（修复权限问题）
+      # 14. 创建 Release
       # ============================================
       - name: 🚀 Create Release
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ env.FILE_DATE }}-OpenWrt-${{ env.FIRMWARE_TAG }}
           tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.BUILD_VERSION }}
@@ -571,7 +581,6 @@ jobs:
             |------|------|
             | Docker | ${{ github.event.inputs.docker == 'true' && '✅ 已启用' || '❌ 未启用' }} |
             | Passwall | ${{ github.event.inputs.passwall == 'true' && '✅ 已启用' || '❌ 未启用' }} |
-            | OpenClash | ${{ github.event.inputs.openclash == 'true' && '✅ 已启用' || '❌ 未启用' }} |
             | Nikki | ${{ github.event.inputs.nikki == 'true' && '✅ 已启用' || '❌ 未启用' }} |
             | OpenAppFilter | ${{ github.event.inputs.oaf == 'true' && '✅ 已启用' || '❌ 未启用' }} |
             
