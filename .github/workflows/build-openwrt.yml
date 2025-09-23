@@ -559,10 +559,13 @@ jobs:
       # ============================================
       - name: 🚀 Create Release
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1.14.0
         with:
-          name: ${{ env.FILE_DATE }}-OpenWrt-${{ env.FIRMWARE_TAG }}
-          tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.BUILD_VERSION }}
+        name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.latest_release }}
+        allowUpdates: true
+        tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.latest_release }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
             ## 🎯 OpenWrt Firmware [${{ env.BUILD_ID }}]
             
