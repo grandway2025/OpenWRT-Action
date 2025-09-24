@@ -531,9 +531,9 @@ jobs:
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
         with:
-          name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}--${{ env.LATEST_RELEASE }}
+          name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-${{ env.LATEST_RELEASE }}
           allowUpdates: true
-          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt--${{ env.LATEST_RELEASE }}
+          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-${{ env.LATEST_RELEASE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
@@ -544,7 +544,7 @@ jobs:
             |------|------|
             | **版本** | `${{ env.LATEST_RELEASE }}` |
             | **日期** | `${{ env.BUILD_DATE }}` |
-            | **目标** | `${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}` |
+            | **目标** | `${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}` |
             | **内核** | `${{ env.KERNEL_VERSION }}` |
             | **LAN IP** | `${{ github.event.inputs.lan_addr }}` |
             | **密码** | `${{ github.event.inputs.root_password }}` |
