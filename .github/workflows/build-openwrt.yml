@@ -185,18 +185,8 @@ jobs:
         with:
           fetch-depth: 1
       # ============================================
-      # 4. 缓存策略（修复警告）
+      # 4. 优化的缓存策略（分层缓存）
       # ============================================
-      - name: 💾 Cache Source Code
-        if: github.event.inputs.force_clean != 'true' && github.event.inputs.use_cache == 'true'
-        id: cache-source
-        uses: actions/cache@v4
-        with:
-          path: openwrt
-          key: ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-src-${{ env.REPO_BRANCH }}-
-          # 移除已废弃的 save-always
       - name: 💾 Cache Downloads
         if: github.event.inputs.use_cache == 'true'
         id: cache-downloads
@@ -206,17 +196,27 @@ jobs:
           key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}
           restore-keys: |
             ${{ github.workflow }}-dl-
-      - name: 💾 Cache Toolchain
+      - name: 💾 Cache Feeds
+        if: github.event.inputs.use_cache == 'true'
+        id: cache-feeds
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/feeds
+            openwrt/package/feeds
+          key: ${{ github.workflow }}-feeds-${{ env.CACHE_KEY }}
+          restore-keys: |
+            ${{ github.workflow }}-feeds-
+      - name: 💾 Cache Toolchain (Minimal)
         if: env.CACHE_TOOLCHAIN == 'true' && github.event.inputs.use_cache == 'true'
         id: cache-toolchain
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
-            openwrt/staging_dir/host
-          key: ${{ github.workflow }}-tc-${{ env.CACHE_KEY }}
+          key: ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
           restore-keys: |
-            ${{ github.workflow }}-tc-
+            ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-
       # ============================================
       # 5. 环境安装
       # ============================================
@@ -236,73 +236,37 @@ jobs:
             git ls-remote --heads "$REPO_URL" | head -10
             exit 1
           fi
-          
-          NEED_CLONE=false
-          
-          # 判断是否需要重新克隆
-          if [ ! -d "openwrt" ]; then
-            echo "📁 No source directory found"
-            NEED_CLONE=true
-          elif [ "${{ github.event.inputs.force_clean }}" = "true" ]; then
-            echo "🧹 Force clean requested"
-            NEED_CLONE=true
-          elif [ "${{ steps.cache-source.outputs.cache-hit }}" != "true" ]; then
-            echo "💾 Cache miss"
-            NEED_CLONE=true
-          else
-            echo "✅ Checking cached source integrity..."
-            cd openwrt
-            
-            # 验证git仓库完整性
-            if [ ! -d ".git" ] || ! git status &>/dev/null; then
-              echo "⚠️ Git repository corrupted"
-              NEED_CLONE=true
+    
+          # 由于不再缓存源码，直接克隆
+          echo "🔄 Cloning fresh OpenWrt source..."
+          rm -rf openwrt
+    
+          # 重试机制
+          for attempt in 1 2 3; do
+            echo "📥 Clone attempt $attempt/3..."
+            if git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt; then
+              break
             else
-              # 尝试安全更新
-              if git fetch --depth=1 origin "$REPO_BRANCH" &>/dev/null; then
-                git reset --hard FETCH_HEAD &>/dev/null || NEED_CLONE=true
-                git clean -fd &>/dev/null || true
-                echo "✅ Successfully updated cached source"
+              echo "❌ Clone attempt $attempt failed"
+              rm -rf openwrt
+              if [ $attempt -lt 3 ]; then
+                sleep 10
               else
-                echo "⚠️ Fetch failed, will re-clone"
-                NEED_CLONE=true
+                echo "❌ All clone attempts failed"
+                exit 1
               fi
             fi
-            cd ..
-          fi
-          
-          # 执行克隆（如果需要）
-          if [ "$NEED_CLONE" = "true" ]; then
-            echo "🔄 Cloning fresh OpenWrt source..."
-            rm -rf openwrt
-            
-            # 重试机制
-            for attempt in 1 2 3; do
-              echo "📥 Clone attempt $attempt/3..."
-              if git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt; then
-                break
-              else
-                echo "❌ Clone attempt $attempt failed"
-                rm -rf openwrt
-                if [ $attempt -lt 3 ]; then
-                  sleep 10
-                else
-                  echo "❌ All clone attempts failed"
-                  exit 1
-                fi
-              fi
-            done
-          fi
-          
+          done
+    
           # 验证和设置环境
           if [ ! -d "openwrt" ]; then
             echo "❌ OpenWrt source directory not found"
             exit 1
           fi
-          
+    
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          
+    
           # 获取提交信息
           if git log -1 --pretty=format:'%an|%ci|%s|%H' &>/dev/null; then
             COMMIT_INFO=$(git log -1 --pretty=format:'%an|%ci|%s|%H')
@@ -313,7 +277,7 @@ jobs:
             MESSAGE="Unknown"
             HASH="Unknown"
           fi
-          
+    
           {
             echo "COMMIT_AUTHOR=${AUTHOR}"
             echo "COMMIT_DATE=${DATE}"
@@ -389,6 +353,12 @@ jobs:
             echo "DEVICE_TARGET=$DEVICE_TARGET"
             echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
           } >> $GITHUB_ENV
+          # 获取最新版本
+          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | grep "tag_name" | head -n 1 | cut -d : -f2 | sed 's/[ \"v,]//g')
+          echo "LATEST_RELEASE=${LATEST_RELEASE}" >>$GITHUB_ENV
+
+          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
+          echo "📌 Latest Release: $LATEST_RELEASE"
       # ============================================
       # 9. 清理构建目录
       # ============================================
@@ -561,9 +531,9 @@ jobs:
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
         with:
-          name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}-24.10
+          name: ${{ env.FILE_DATE }}-${{ env.FIRMWARE_TAG }}--${{ env.LATEST_RELEASE }}
           allowUpdates: true
-          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt-24.10
+          tag: ${{ env.FIRMWARE_TAG }}-OpenWrt--${{ env.LATEST_RELEASE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
@@ -572,7 +542,7 @@ jobs:
             ### 📊 构建信息
             | 项目 | 信息 |
             |------|------|
-            | **版本** | `${{ env.BUILD_VERSION }}` |
+            | **版本** | `${{ env.LATEST_RELEASE }}` |
             | **日期** | `${{ env.BUILD_DATE }}` |
             | **目标** | `${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}` |
             | **内核** | `${{ env.KERNEL_VERSION }}` |
