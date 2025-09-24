@@ -90,38 +90,23 @@ mv -n package/new/kucat/luci-theme-kucat package/new/luci-theme-kucat && rm -rf 
 
 # openclash
 mkdir -p files/etc/openclash/core
-mkdir -p files/etc/config
 CLASH_META_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-arm64.tar.gz"
 GEOIP_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
 GEOSITE_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
-CLASH_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/openclash"
-NIKKI_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/nikki"
-ARGON_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/argon"
-ADP_URL="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/advancedplus"
 wget -qO- $CLASH_META_URL | tar xOvz > files/etc/openclash/core/clash_meta
 wget -qO- $GEOIP_URL > files/etc/openclash/GeoIP.dat
 wget -qO- $GEOSITE_URL > files/etc/openclash/GeoSite.dat
-wget -qO- $CLASH_URL > files/etc/config/openclash
-wget -qO- $NIKKI_URL > files/etc/config/nikki
-wget -qO- $ARGON_URL > files/etc/config/argon
-wget -qO- $ADP_URL > files/etc/config/advancedplus
 chmod +x files/etc/openclash/core/clash*
-chmod +x files/etc/config/openclash
-chmod +x files/etc/config/nikki
-chmod +x files/etc/config/argon
-chmod +x files/etc/config/advancedplus
+
 
 # adguardhome
 git clone https://git.kejizero.online/zhao/luci-app-adguardhome package/new/luci-app-adguardhome
 mkdir -p files/usr/bin
 AGH_CORE=$(curl -sL https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep /AdGuardHome_linux_arm64 | awk -F '"' '{print $4}')
-AGH_YAML="https://github.com/grandway2025/Actions-OpenWrt/raw/refs/heads/main/files/AdGuardHome.yaml"
 wget -qO- $AGH_CORE | tar xOvz > files/usr/bin/AdGuardHome
 chmod +x files/usr/bin/AdGuardHome
-wget -qO- $AGH_CORE | tar xOvz > files/usr/bin/AdGuardHome
 wget -qO- $AGH_YAML > files/etc/AdGuardHome.yaml
 chmod +x files/usr/bin/AdGuardHome
-chmod +x files/etc/AdGuardHome.yaml
 
 # Docker
 rm -rf feeds/luci/applications/luci-app-dockerman
