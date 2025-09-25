@@ -290,12 +290,12 @@ jobs:
       - name: 📚 Configure Feeds
         run: |
           cd "$OPENWRT_PATH"
-          
           # 复制feeds配置
           if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
-            cp "${{ github.workspace }}/feeds.conf.default" .
-          fi
-          
+            cp ${{ github.workspace }}/feeds.conf.default .
+          else
+            echo "::warning::feeds.conf.default not found in . Using default OpenWrt feeds."
+          fi      
           # 更新和安装feeds
           ./scripts/feeds update -a
           ./scripts/feeds install -a
