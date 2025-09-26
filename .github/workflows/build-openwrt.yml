@@ -35,7 +35,7 @@ on:
       oaf:
         description: "🔒 OpenAppFilter"
         type: boolean
-        default: false
+        default: true
       use_cache:
         description: "💾 使用缓存加速"
         type: boolean
@@ -317,7 +317,10 @@ jobs:
           cd "$OPENWRT_PATH"
           
           # 复制自定义文件
-          [ -e "${{ github.workspace }}/files" ] && cp -r "${{ github.workspace }}/files" .
+          # [ -e "${{ github.workspace }}/files" ] && cp -r "${{ github.workspace }}/files" .
+          if [ -d "$GITHUB_WORKSPACE/files" ]; then
+            mv $GITHUB_WORKSPACE/files $OPENWRT_PATH/files
+          fi
           
           # 复制配置文件
           cp "${{ github.workspace }}/$CONFIG_FILE" .config
@@ -497,8 +500,11 @@ jobs:
             "commit_hash": "$COMMIT_HASH",
             "plugins": {
               "docker": ${{ github.event.inputs.docker }},
+              "ShadowSocksR Plus+": ${{ github.event.inputs.ssrp }},
               "passwall": ${{ github.event.inputs.passwall }},
+              "OpenClash": ${{ github.event.inputs.OpenClash }},
               "nikki": ${{ github.event.inputs.nikki }},
+              "lucky": ${{ github.event.inputs.lucky }},
               "oaf": ${{ github.event.inputs.oaf }}
             }
           }
@@ -551,11 +557,14 @@ jobs:
             
             ### 📦 包含的插件
             | 插件 | 状态 |
-            |------|------|
-            | Docker | ${{ github.event.inputs.docker == 'true' && '✅ 已启用' || '❌ 未启用' }} |
-            | Passwall | ${{ github.event.inputs.passwall == 'true' && '✅ 已启用' || '❌ 未启用' }} |
-            | Nikki | ${{ github.event.inputs.nikki == 'true' && '✅ 已启用' || '❌ 未启用' }} |
-            | OpenAppFilter | ${{ github.event.inputs.oaf == 'true' && '✅ 已启用' || '❌ 未启用' }} |
+            |------|------| 
+            | Docker | ${{ github.event.inputs.docker == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | ShadowSocksR Plus+ | ${{ github.event.inputs.ssrp == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | Passwall | ${{ github.event.inputs.passwall == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | OpenClash | ${{ github.event.inputs.openclash == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | Nikki | ${{ github.event.inputs.nikki == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | lucky | ${{ github.event.inputs.lucky == 'true' && '✅ 已编译' || '❌ 未编译' }} |
+            | OpenAppFilter | ${{ github.event.inputs.oaf == 'true' && '✅ 已编译' || '❌ 未编译' }} |
             
             ### 📝 源码信息
             - **仓库**: [${{ env.REPO_URL }}](${{ env.REPO_URL }})
