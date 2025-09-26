@@ -278,10 +278,16 @@ jobs:
           ENABLE_OAF: ${{ github.event.inputs.oaf == 'true' && 'y' || 'n' }}
         run: |
           cd "$OPENWRT_PATH"
+          
+          # 复制自定义文件
           if [ -d "$GITHUB_WORKSPACE/files" ]; then
-            mv "$GITHUB_WORKSPACE/files" "$OPENWRT_PATH/files"
+            mv $GITHUB_WORKSPACE/files $OPENWRT_PATH/files
           fi
+          
+          # 复制配置文件
           cp "${{ github.workspace }}/$CONFIG_FILE" .config
+          
+          # 执行自定义脚本
           if [ -d "${{ github.workspace }}/scripts" ]; then
             find "${{ github.workspace }}/scripts" -name "*.sh" -exec chmod +x {} \;
           fi
@@ -291,32 +297,22 @@ jobs:
           fi
           "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL"
           "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL"
-          if [ "$ENABLE_OAF" = "y" ]; then
-            echo "🔧 Configuring OpenAppFilter..."
-            sed -i '/CONFIG_PACKAGE_kmod-oaf/d' .config
-            sed -i '/CONFIG_PACKAGE_appfilter/d' .config
-            cat >> .config <<'EOF'
-          CONFIG_PACKAGE_kmod-oaf=y
-          CONFIG_PACKAGE_appfilter=y
-          EOF
-          else
-            echo "🚫 Disabling OpenAppFilter..."
-            sed -i '/CONFIG_PACKAGE_kmod-oaf/d' .config
-            sed -i '/CONFIG_PACKAGE_appfilter/d' .config
-            cat >> .config <<'EOF'
-          # CONFIG_PACKAGE_kmod-oaf is not set
-          # CONFIG_PACKAGE_appfilter is not set
-          EOF
-          fi
+
+          # 生成配置
           make defconfig
+          
+          # 提取目标信息
           DEVICE_TARGET=$(awk -F'"' '/^CONFIG_TARGET_BOARD=/{print $2}' .config)
           DEVICE_SUBTARGET=$(awk -F'"' '/^CONFIG_TARGET_SUBTARGET=/{print $2}' .config)
+          
           {
             echo "DEVICE_TARGET=$DEVICE_TARGET"
             echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
           } >> $GITHUB_ENV
+          # 获取最新版本
           LATEST_RELEASE=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | grep "tag_name" | head -n 1 | cut -d : -f2 | sed 's/[ \"v,]//g')
-          echo "LATEST_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
+          echo "LATEST_RELEASE=${LATEST_RELEASE}" >>$GITHUB_ENV
+
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
           echo "📌 Latest Release: $LATEST_RELEASE"
       # ============================================
