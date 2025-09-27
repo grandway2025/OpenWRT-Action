@@ -217,39 +217,41 @@ jobs:
       # ============================================
       # 6. 分层缓存，默认开启，可在 env 中统一控制
       # ============================================
-      - name: 💾 Cache Downloads
-        if: env.USE_CACHE == 'true'
-        id: cache-downloads
-        uses: actions/cache@v4
-        with:
-          path: openwrt/dl
-          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-dl-
-        # 缓存第三方依赖下载，加速重复构建
-      - name: 💾 Cache Feeds
-        if: env.USE_CACHE == 'true'
-        id: cache-feeds
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/feeds
-            openwrt/package/feeds
-          key: ${{ github.workflow }}-feeds-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-feeds-
-        # Feeds 缓存命中后仍需更新，缓存主要减少大仓库重复拉取
-      - name: 💾 Cache Toolchain (Minimal)
-        if: env.CACHE_TOOLCHAIN == 'true' && env.USE_CACHE == 'true'
-        id: cache-toolchain
+      - name: ☁️ Cache Toolchain (Minimal)
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
-          key: ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
+            openwrt/build_dir/toolchain-*
+            openwrt/tmp/hostpkg
+            openwrt/tmp/stamps/toolchain-*
+            openwrt/tmp/toolchain-*
+          key: Build OpenWrt (x86_64)-tc-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/config.seed', 'profiles/*/files/**', 'profiles/global/*.patch') }}
           restore-keys: |
-            ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-
-        # 仅缓存 toolchain，避免 build_dir 残留导致不稳定
+            Build OpenWrt (x86_64)-tc-${{ env.OPENWRT_RELEASE }}-
+      - name: ☁️ Cache Feeds
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/feeds
+            openwrt/tmp/packagecache
+          key: Build OpenWrt (x86_64)-feeds-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/feeds.conf', 'profiles/global/feeds/*.patch') }}
+          restore-keys: |
+            Build OpenWrt (x86_64)-feeds-${{ env.OPENWRT_RELEASE }}-
+      - name: ☁️ Cache Downloads
+        uses: actions/cache@v4
+        with:
+          path: openwrt/dl
+          key: Build OpenWrt (x86_64)-dl-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/feeds.conf', 'profiles/global/feeds/*.patch', 'profiles/*/files/**') }}
+          restore-keys: |
+            Build OpenWrt (x86_64)-dl-${{ env.OPENWRT_RELEASE }}-
+      - name: ☁️ Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: openwrt/.ccache
+          key: Build OpenWrt (x86_64)-ccache-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/config.seed', 'profiles/*/files/**', 'profiles/global/*.patch') }}
+          restore-keys: |
+            Build OpenWrt (x86_64)-ccache-${{ env.OPENWRT_RELEASE }}-
       # ============================================
       # 7. Feeds 配置
       # ============================================
