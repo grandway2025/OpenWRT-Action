@@ -166,51 +166,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+      
       # ============================================
-      # 4. 分层缓存，默认开启，可在 env 中统一控制
-      # ============================================
-      - name: 💾 Cache Downloads
-        if: env.USE_CACHE == 'true'
-        id: cache-downloads
-        uses: actions/cache@v4
-        with:
-          path: openwrt/dl
-          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-dl-
-        # 缓存第三方依赖下载，加速重复构建
-      - name: 💾 Cache Feeds
-        if: env.USE_CACHE == 'true'
-        id: cache-feeds
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/feeds
-            openwrt/package/feeds
-          key: ${{ github.workflow }}-feeds-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-feeds-
-        # Feeds 缓存命中后仍需更新，缓存主要减少大仓库重复拉取
-      - name: 💾 Cache Toolchain (Minimal)
-        if: env.CACHE_TOOLCHAIN == 'true' && env.USE_CACHE == 'true'
-        id: cache-toolchain
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/staging_dir/toolchain-*
-          key: ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
-          restore-keys: |
-            ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-
-        # 仅缓存 toolchain，避免 build_dir 残留导致不稳定
-      # ============================================
-      # 5. 构建依赖安装
+      # 4. 构建依赖安装
       # ============================================
       - name: 🛠️ Build System Setup
         uses: sbwml/actions@openwrt-build-setup
       - name: 📦 Install LLVM
         uses: sbwml/actions@install-llvm
       # ============================================
-      # 6. 源码准备与信息采集
+      # 5. 源码准备与信息采集
       # ============================================
       - name: 📥 Prepare OpenWrt Source
         run: |
@@ -249,6 +214,42 @@ jobs:
             echo "COMMIT_MESSAGE=${MESSAGE}"
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
+      # ============================================
+      # 6. 分层缓存，默认开启，可在 env 中统一控制
+      # ============================================
+      - name: 💾 Cache Downloads
+        if: env.USE_CACHE == 'true'
+        id: cache-downloads
+        uses: actions/cache@v4
+        with:
+          path: openwrt/dl
+          key: ${{ github.workflow }}-dl-${{ env.CACHE_KEY }}
+          restore-keys: |
+            ${{ github.workflow }}-dl-
+        # 缓存第三方依赖下载，加速重复构建
+      - name: 💾 Cache Feeds
+        if: env.USE_CACHE == 'true'
+        id: cache-feeds
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/feeds
+            openwrt/package/feeds
+          key: ${{ github.workflow }}-feeds-${{ env.CACHE_KEY }}
+          restore-keys: |
+            ${{ github.workflow }}-feeds-
+        # Feeds 缓存命中后仍需更新，缓存主要减少大仓库重复拉取
+      - name: 💾 Cache Toolchain (Minimal)
+        if: env.CACHE_TOOLCHAIN == 'true' && env.USE_CACHE == 'true'
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/staging_dir/toolchain-*
+          key: ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
+          restore-keys: |
+            ${{ github.workflow }}-tc-${{ env.REPO_BRANCH }}-
+        # 仅缓存 toolchain，避免 build_dir 残留导致不稳定
       # ============================================
       # 7. Feeds 配置
       # ============================================
