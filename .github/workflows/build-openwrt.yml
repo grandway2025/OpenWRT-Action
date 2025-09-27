@@ -226,32 +226,32 @@ jobs:
             openwrt/tmp/hostpkg
             openwrt/tmp/stamps/toolchain-*
             openwrt/tmp/toolchain-*
-          key: Build OpenWrt (x86_64)-tc-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/config.seed', 'profiles/*/files/**', 'profiles/global/*.patch') }}
+          key: Build-OpenWrt-x86_64-tc-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config', 'scripts/*.sh') }}
           restore-keys: |
-            Build OpenWrt (x86_64)-tc-${{ env.OPENWRT_RELEASE }}-
+            Build-OpenWrt-x86_64-tc-${{ env.REPO_BRANCH }}-
       - name: ☁️ Cache Feeds
         uses: actions/cache@v4
         with:
           path: |
             openwrt/feeds
             openwrt/tmp/packagecache
-          key: Build OpenWrt (x86_64)-feeds-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/feeds.conf', 'profiles/global/feeds/*.patch') }}
+          key: Build-OpenWrt-x86_64-feeds-${{ env.REPO_BRANCH }}-${{ hashFiles('feeds.conf.default') }}
           restore-keys: |
-            Build OpenWrt (x86_64)-feeds-${{ env.OPENWRT_RELEASE }}-
+            Build-OpenWrt-x86_64-feeds-${{ env.REPO_BRANCH }}-
       - name: ☁️ Cache Downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: Build OpenWrt (x86_64)-dl-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/feeds.conf', 'profiles/global/feeds/*.patch', 'profiles/*/files/**') }}
+          key: Build-OpenWrt-x86_64-dl-${{ env.REPO_BRANCH }}-${{ hashFiles('configs/x86_64.config', 'feeds.conf.default') }}
           restore-keys: |
-            Build OpenWrt (x86_64)-dl-${{ env.OPENWRT_RELEASE }}-
+            Build-OpenWrt-x86_64-dl-${{ env.REPO_BRANCH }}-
       - name: ☁️ Cache ccache
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: Build OpenWrt (x86_64)-ccache-${{ env.OPENWRT_RELEASE }}-${{ hashFiles('profiles/*/config.seed', 'profiles/*/files/**', 'profiles/global/*.patch') }}
+          key: Build-OpenWrt-x86_64-ccache-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}
           restore-keys: |
-            Build OpenWrt (x86_64)-ccache-${{ env.OPENWRT_RELEASE }}-
+            Build-OpenWrt-x86_64-ccache-${{ env.REPO_BRANCH }}-
       # ============================================
       # 7. Feeds 配置
       # ============================================
@@ -360,7 +360,7 @@ jobs:
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           ccache -M 5G
-          ccache -z
+          # 移除 ccache -z 这行
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           compile_with_jobs() {
             local jobs=$1
