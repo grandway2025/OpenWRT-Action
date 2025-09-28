@@ -294,48 +294,25 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          echo "🎨 Applying custom configuration..."
-          
           # 复制自定义文件
           if [ -d "$GITHUB_WORKSPACE/files" ]; then
-            echo "📁 Copying custom files..."
-            cp -r "$GITHUB_WORKSPACE/files" ./
+            mv $GITHUB_WORKSPACE/files $OPENWRT_PATH/files
           fi
           
           # 复制配置文件
-          if [ -f "${{ github.workspace }}/$CONFIG_FILE" ]; then
-            echo "📄 Copying config file..."
-            cp "${{ github.workspace }}/$CONFIG_FILE" .config
-          else
-            echo "❌ Config file not found: $CONFIG_FILE"
-            exit 1
-          fi
+          cp "${{ github.workspace }}/$CONFIG_FILE" .config
           
           # 执行自定义脚本
           if [ -d "${{ github.workspace }}/scripts" ]; then
             find "${{ github.workspace }}/scripts" -name "*.sh" -exec chmod +x {} \;
           fi
-          
           if [ -f "${{ github.workspace }}/$DIY_SCRIPT" ]; then
-            echo "🔧 Running DIY script..."
             chmod +x "${{ github.workspace }}/$DIY_SCRIPT"
             "${{ github.workspace }}/$DIY_SCRIPT"
           fi
+          "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL"
+          "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL"
           
-          # 根据用户选择执行核心下载脚本
-          if [ "$ENABLE_OPENCLASH" = "y" ] && [ -f "${{ github.workspace }}/scripts/preset-mihimo-core.sh" ]; then
-            echo "⚡ Setting up OpenClash core..."
-            chmod +x "${{ github.workspace }}/scripts/preset-mihomo-core.sh"
-            "${{ github.workspace }}/scripts/preset-mihomo-core.sh" "$CLASH_KERNEL" || echo "::warning::OpenClash core setup failed"
-          fi
-          
-          if [ "$ENABLE_SSRP" = "y" ] || [ "$ENABLE_PASSWALL" = "y" ]; then
-            if [ -f "${{ github.workspace }}/scripts/preset-adguard-core.sh" ]; then
-              echo "🛡️ Setting up AdGuard core..."
-              chmod +x "${{ github.workspace }}/scripts/preset-adguard-core.sh"
-              "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL" || echo "::warning::AdGuard core setup failed"
-            fi
-          fi
           # 生成配置
           echo "⚙️ Generating defconfig..."
           make defconfig
