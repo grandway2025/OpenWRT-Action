@@ -419,36 +419,32 @@ jobs:
         timeout-minutes: 600
         run: |
           cd "$OPENWRT_PATH"
-    
+          
           # 修复 ccache 配置
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           export PATH="/usr/lib/ccache:$PATH"
-    
+          
           # 确保 ccache 目录存在并设置正确权限
           mkdir -p "$CCACHE_DIR"
-    
-         # 配置 ccache
+          
+          # 配置 ccache
           ccache -M 8G
           ccache -s
-    
+          
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           echo "=== ccache initial stats ==="
           ccache -s
-          echo "CCACHE_DIR: $CCACHE_DIR"
-          echo "PATH: $PATH"
+          echo "CCACHE_DIR: $CCACHE_DIR"  # 修复：移除不必要的转义
+          echo "PATH: $PATH"              # 修复：移除不必要的转义
           echo "=========================="
-    
+          
           compile_with_jobs() {
             local jobs=$1
             local log_file="compile_j${jobs}.log"
             echo "🔧 Compiling with $jobs jobs..."
-      
-            # 添加 V=s 用于调试第一次编译（可选）
-            local make_args=""
-            [ "$jobs" = "1" ] && make_args="V=s"
-      
-            if timeout 500m make -j"$jobs" $make_args 2>&1 | tee "$log_file"; then
+            
+            if timeout 500m make -j"$jobs" 2>&1 | tee "$log_file"; then
               echo "✅ Compilation successful with $jobs jobs"
               return 0
             else
@@ -456,8 +452,8 @@ jobs:
               return 1
             fi
           }
-    
-          # 编译逻辑保持不变
+          
+          # 尝试编译（逐步降低并行度）
           if compile_with_jobs "$COMPILE_JOBS"; then
             echo "status=success" >> $GITHUB_OUTPUT
           elif [ "$COMPILE_JOBS" -gt 2 ] && compile_with_jobs $((COMPILE_JOBS/2)); then
@@ -466,12 +462,19 @@ jobs:
             echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "❌ All compilation attempts failed"
+            echo "=== Build Error Analysis ==="
+            if [ -f "compile_j1.log" ]; then
+              echo "Last 100 lines of single-threaded build:"
+              tail -n 100 compile_j1.log
+            fi
+            echo "=== Recent package logs ==="
+            find logs -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
             exit 1
           fi
-    
+          
           echo "=== ccache final stats ==="
-          ccache -s
-          echo "Cache directory size: $(du -sh $CCACHE_DIR 2>/dev/null || echo 'N/A')"
+          ccache -s || echo "ccache stats not available"
+          echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
           echo "========================="
       # ============================================
       # 12. 整理固件文件
