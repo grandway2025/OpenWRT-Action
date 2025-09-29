@@ -243,7 +243,6 @@ jobs:
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-
             
-      # 修改缓存配置，增加更大的 ccache 缓存
       - name: ☁️ Cache ccache
         if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
@@ -253,28 +252,6 @@ jobs:
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
-      # 在编译前添加 ccache 预热步骤
-      - name: 🔥 Prepare ccache
-        run: |
-          cd "$OPENWRT_PATH"
-          
-          # 安装并配置 ccache
-          export USE_CCACHE=1
-          export CCACHE_DIR="$PWD/.ccache"
-          export PATH="/usr/lib/ccache:$PATH"
-          
-          # 创建 ccache 目录
-          mkdir -p "$CCACHE_DIR"
-          
-          # 配置 ccache（增大缓存）
-          ccache -M 8G
-          ccache -F 50000  # 增加文件数限制
-          ccache -s
-          
-          echo "=== ccache configuration ==="
-          ccache -p
-          echo "=========================="
-      # 修改 Compile Firmware 步骤（如上所示）
       # ============================================
       # 7. Feeds 配置
       # ============================================
@@ -302,7 +279,30 @@ jobs:
           echo "📦 Installing feeds..."
           ./scripts/feeds install -a
       # ============================================
-      # 8. 自定义配置及插件开关
+      # 8. ccache 预热步骤（移动到这里）
+      # ============================================
+      - name: 🔥 Prepare ccache
+        run: |
+          cd "$OPENWRT_PATH"
+          
+          # 安装并配置 ccache
+          export USE_CCACHE=1
+          export CCACHE_DIR="$PWD/.ccache"
+          export PATH="/usr/lib/ccache:$PATH"
+          
+          # 创建 ccache 目录
+          mkdir -p "$CCACHE_DIR"
+          
+          # 配置 ccache（增大缓存）
+          ccache -M 8G
+          ccache -F 50000  # 增加文件数限制
+          ccache -s
+          
+          echo "=== ccache configuration ==="
+          ccache -p
+          echo "=========================="
+      # ============================================
+      # 9. 自定义配置及插件开关
       # ============================================
       - name: 🎨 Apply Custom Configuration
         env:
@@ -367,7 +367,7 @@ jobs:
           echo "  Lucky: $ENABLE_LUCKY"
           echo "  OAF: $ENABLE_OAF"
       # ============================================
-      # 9. 强制清理（修复逻辑）
+      # 10. 强制清理（修复逻辑）
       # ============================================
       - name: 🧹 Clean Build Directory
         if: github.event.inputs.force_clean == 'true'
@@ -386,7 +386,7 @@ jobs:
           rm .config.backup
           make defconfig
       # ============================================
-      # 10. 下载依赖包
+      # 11. 下载依赖包
       # ============================================
       - name: 📥 Download Packages
         run: |
@@ -412,7 +412,7 @@ jobs:
           
           echo "📊 Downloaded packages: $(find dl -type f | wc -l)"
       # ============================================
-      # 11. 编译固件
+      # 12. 编译固件
       # ============================================
       - name: 🔨 Compile Firmware
         id: compile
@@ -477,7 +477,7 @@ jobs:
           echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
           echo "========================="
       # ============================================
-      # 12. 整理固件文件
+      # 13. 整理固件文件
       # ============================================
       - name: 📦 Organize Firmware
         if: steps.compile.outputs.status == 'success'
@@ -536,7 +536,7 @@ jobs:
           
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
       # ============================================
-      # 13. 上传 Artifacts
+      # 14. 上传 Artifacts
       # ============================================
       - name: 📤 Upload Artifacts
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_ARTIFACTS == 'true'
@@ -547,7 +547,7 @@ jobs:
           retention-days: 30
           compression-level: 6
       # ============================================
-      # 14. 创建 Release
+      # 15. 创建 Release
       # ============================================
       - name: 🚀 Create Release
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
