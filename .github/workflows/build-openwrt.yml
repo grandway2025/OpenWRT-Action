@@ -210,7 +210,7 @@ jobs:
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
       # ============================================
-      # 6. 修复后的分层缓存（关键修复）
+      # 6. 优化的缓存策略
       # ============================================
       - name: ☁️ Cache Toolchain
         if: github.event.inputs.force_clean != 'true'
@@ -219,27 +219,15 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-            openwrt/tmp/info
-          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v3
+          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v4
           restore-keys: |
             toolchain-${{ env.REPO_BRANCH }}-
-            
-      - name: ☁️ Cache Feeds
-        if: github.event.inputs.force_clean != 'true'
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/feeds
-            openwrt/tmp/packagecache
-          key: feeds-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v3
-          restore-keys: |
-            feeds-${{ env.REPO_BRANCH }}-
             
       - name: ☁️ Cache Downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v3
+          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v4
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-
             
@@ -248,29 +236,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ github.run_number }}-v4
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v4
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
       # ============================================
-      # 7. Feeds 配置
+      # 7. 简化的 Feeds 配置（无缓存）
       # ============================================
       - name: 📚 Configure Feeds
         run: |
           cd "$OPENWRT_PATH"
           
-          # 如果强制清理，删除现有 feeds
-          if [ "${{ github.event.inputs.force_clean }}" == "true" ]; then
-            echo "🧹 Force cleaning feeds..."
-            rm -rf feeds tmp/packagecache
-          fi
+          # 确保 feeds 目录干净
+          rm -rf feeds tmp/packagecache
           
-          # 复制 feeds 配置（如果存在）
+          # 复制 feeds 配置
           if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
             cp "${{ github.workspace }}/feeds.conf.default" .
             echo "📄 Using custom feeds.conf.default"
-          else
-            echo "::warning::feeds.conf.default not found, using upstream defaults."
           fi
           
           # 更新和安装 feeds
