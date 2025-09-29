@@ -243,14 +243,38 @@ jobs:
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-
             
+      # 修改缓存配置，增加更大的 ccache 缓存
       - name: ☁️ Cache ccache
         if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v3
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ github.run_number }}-v4
           restore-keys: |
+            ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
+      # 在编译前添加 ccache 预热步骤
+      - name: 🔥 Prepare ccache
+        run: |
+          cd "$OPENWRT_PATH"
+          
+          # 安装并配置 ccache
+          export USE_CCACHE=1
+          export CCACHE_DIR="$PWD/.ccache"
+          export PATH="/usr/lib/ccache:$PATH"
+          
+          # 创建 ccache 目录
+          mkdir -p "$CCACHE_DIR"
+          
+          # 配置 ccache（增大缓存）
+          ccache -M 8G
+          ccache -F 50000  # 增加文件数限制
+          ccache -s
+          
+          echo "=== ccache configuration ==="
+          ccache -p
+          echo "=========================="
+      # 修改 Compile Firmware 步骤（如上所示）
       # ============================================
       # 7. Feeds 配置
       # ============================================
@@ -395,22 +419,36 @@ jobs:
         timeout-minutes: 600
         run: |
           cd "$OPENWRT_PATH"
-          
+    
+          # 修复 ccache 配置
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
-          ccache -M 5G
-          
+          export PATH="/usr/lib/ccache:$PATH"
+    
+          # 确保 ccache 目录存在并设置正确权限
+          mkdir -p "$CCACHE_DIR"
+    
+         # 配置 ccache
+          ccache -M 8G
+          ccache -s
+    
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           echo "=== ccache initial stats ==="
-          ccache -s || echo "ccache not available yet"
+          ccache -s
+          echo "CCACHE_DIR: $CCACHE_DIR"
+          echo "PATH: $PATH"
           echo "=========================="
-          
+    
           compile_with_jobs() {
             local jobs=$1
             local log_file="compile_j${jobs}.log"
             echo "🔧 Compiling with $jobs jobs..."
-            
-            if timeout 500m make -j"$jobs" 2>&1 | tee "$log_file"; then
+      
+            # 添加 V=s 用于调试第一次编译（可选）
+            local make_args=""
+            [ "$jobs" = "1" ] && make_args="V=s"
+      
+            if timeout 500m make -j"$jobs" $make_args 2>&1 | tee "$log_file"; then
               echo "✅ Compilation successful with $jobs jobs"
               return 0
             else
@@ -418,8 +456,8 @@ jobs:
               return 1
             fi
           }
-          
-          # 尝试编译（逐步降低并行度）
+    
+          # 编译逻辑保持不变
           if compile_with_jobs "$COMPILE_JOBS"; then
             echo "status=success" >> $GITHUB_OUTPUT
           elif [ "$COMPILE_JOBS" -gt 2 ] && compile_with_jobs $((COMPILE_JOBS/2)); then
@@ -428,18 +466,12 @@ jobs:
             echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "❌ All compilation attempts failed"
-            echo "=== Build Error Analysis ==="
-            if [ -f "compile_j1.log" ]; then
-              echo "Last 100 lines of single-threaded build:"
-              tail -n 100 compile_j1.log
-            fi
-            echo "=== Recent package logs ==="
-            find logs -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
             exit 1
           fi
-          
+    
           echo "=== ccache final stats ==="
-          ccache -s || echo "ccache stats not available"
+          ccache -s
+          echo "Cache directory size: $(du -sh $CCACHE_DIR 2>/dev/null || echo 'N/A')"
           echo "========================="
       # ============================================
       # 12. 整理固件文件
