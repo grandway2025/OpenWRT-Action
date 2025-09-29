@@ -248,12 +248,15 @@ jobs:
           cd "$OPENWRT_PATH"
           
           # 确保 feeds 目录干净
+          echo "🧹 Cleaning feeds directory..."
           rm -rf feeds tmp/packagecache
           
-          # 复制 feeds 配置
+          # 复制 feeds 配置（如果存在）
           if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
             cp "${{ github.workspace }}/feeds.conf.default" .
             echo "📄 Using custom feeds.conf.default"
+          else
+            echo "::warning::feeds.conf.default not found, using upstream defaults."
           fi
           
           # 更新和安装 feeds
