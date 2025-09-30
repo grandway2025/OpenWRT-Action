@@ -53,7 +53,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   CONFIG_FILE: configs/x86_64.config
-  DIY_SCRIPT: scripts/diy-x86_64_demo.sh
+  DIY_SCRIPT: scripts/diy-x86_64_demo.sh  # 保持你的修改
   FEEDS_CONF: feeds.conf.default
   CLASH_KERNEL: amd64
   UPLOAD_ARTIFACTS: false
@@ -149,7 +149,7 @@ jobs:
           echo "Memory status:"
           free -h
       # ============================================
-      # 3. 代码检出（保持原位置）
+      # 3. 代码检出
       # ============================================
       - name: ✅ Checkout Repository
         uses: actions/checkout@v4
@@ -219,9 +219,28 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v4
+          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v5
           restore-keys: |
             toolchain-${{ env.REPO_BRANCH }}-
+      - name: ☁️ Cache Staging Directory
+        if: github.event.inputs.force_clean != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/staging_dir/host*
+            openwrt/staging_dir/hostpkg
+          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v2
+          restore-keys: |
+            staging-${{ env.REPO_BRANCH }}-
+      - name: ☁️ Cache Build Host
+        if: github.event.inputs.force_clean != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/build_dir/host*
+          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v2
+          restore-keys: |
+            buildhost-${{ env.REPO_BRANCH }}-
             
       - name: ☁️ Cache Downloads
         uses: actions/cache@v4
@@ -236,12 +255,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v4
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v5
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
       # ============================================
-      # 7. 简化的 Feeds 配置（无缓存）
+      # 7. 简化的 Feeds 配置
       # ============================================
       - name: 📚 Configure Feeds
         run: |
@@ -265,7 +284,7 @@ jobs:
           echo "📦 Installing feeds..."
           ./scripts/feeds install -a
       # ============================================
-      # 8. ccache 预热步骤（移动到这里）
+      # 8. ccache 配置（统一在这里）
       # ============================================
       - name: 🔥 Prepare ccache
         run: |
@@ -279,13 +298,18 @@ jobs:
           # 创建 ccache 目录
           mkdir -p "$CCACHE_DIR"
           
-          # 配置 ccache（增大缓存）
-          ccache -M 8G
-          ccache -F 50000  # 增加文件数限制
-          ccache -s
+          # 统一的优化 ccache 配置
+          ccache -M 10G
+          ccache -F 100000
+          ccache --set-config=compression=true
+          ccache --set-config=compression_level=6
+          ccache --set-config=stats=true
+          ccache --set-config=max_files=100000
+          ccache --set-config=sloppiness=file_macro,locale,time_macros
           
           echo "=== ccache configuration ==="
           ccache -p
+          ccache -s
           echo "=========================="
       # ============================================
       # 9. 自定义配置及插件开关
@@ -336,7 +360,7 @@ jobs:
             echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
           } >> $GITHUB_ENV
           
-          # 获取最新版本（带错误处理）
+          # 获取最新版本
           LATEST_RELEASE=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
             grep -m1 '"tag_name"' | cut -d'"' -f4 | sed 's/^v//' || echo "unknown")
           echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
@@ -353,7 +377,7 @@ jobs:
           echo "  Lucky: $ENABLE_LUCKY"
           echo "  OAF: $ENABLE_OAF"
       # ============================================
-      # 10. 强制清理（修复逻辑）
+      # 10. 强制清理
       # ============================================
       - name: 🧹 Clean Build Directory
         if: github.event.inputs.force_clean == 'true'
@@ -406,23 +430,16 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 修复 ccache 配置
+          # 使用已配置的 ccache
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           export PATH="/usr/lib/ccache:$PATH"
           
-          # 确保 ccache 目录存在并设置正确权限
-          mkdir -p "$CCACHE_DIR"
-          
-          # 配置 ccache
-          ccache -M 8G
-          ccache -s
-          
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           echo "=== ccache initial stats ==="
           ccache -s
-          echo "CCACHE_DIR: $CCACHE_DIR"  # 修复：移除不必要的转义
-          echo "PATH: $PATH"              # 修复：移除不必要的转义
+          echo "CCACHE_DIR: $CCACHE_DIR"
+          echo "PATH: $PATH"
           echo "=========================="
           
           compile_with_jobs() {
@@ -462,6 +479,35 @@ jobs:
           ccache -s || echo "ccache stats not available"
           echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
           echo "========================="
+      - name: 📊 Cache Statistics
+        if: always()
+        run: |
+          cd "$OPENWRT_PATH"
+          echo "=== Cache Effectiveness Report ==="
+          echo "Date: $(date)"
+          echo "Branch: ${{ env.REPO_BRANCH }}"
+          echo "Plugins Hash: ${{ env.PLUGINS_HASH }}"
+          echo "Week Key: ${{ env.WEEK_KEY }}"
+          echo ""
+          
+          echo "📁 Directory Sizes:"
+          du -sh dl/ 2>/dev/null || echo "dl/: Not found"
+          du -sh .ccache/ 2>/dev/null || echo ".ccache/: Not found"
+          du -sh staging_dir/ 2>/dev/null || echo "staging_dir/: Not found"
+          du -sh build_dir/toolchain-* 2>/dev/null || echo "toolchain build_dir/: Not found"
+          echo ""
+          
+          echo "🎯 ccache Statistics:"
+          if command -v ccache >/dev/null 2>&1; then
+            export CCACHE_DIR="$PWD/.ccache"
+            ccache -s
+            echo ""
+            echo "📈 Cache Hit Rate:"
+            ccache -s | grep -E "(cache hit|cache miss|files in cache)" || echo "Stats not available"
+          else
+            echo "ccache not available"
+          fi
+          echo "================================="
       # ============================================
       # 13. 整理固件文件
       # ============================================
@@ -581,4 +627,3 @@ jobs:
             ```bash
             gunzip openwrt-*-generic-ext4-combined-efi.img.gz
             dd if=openwrt-*-generic-ext4-combined-efi.img of=/dev/sdX bs=4M status=progress
-
