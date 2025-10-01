@@ -210,7 +210,7 @@ jobs:
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
       # ============================================
-      # 6. 高度优化的缓存策略
+      # 6. 稳定缓存策略
       # ============================================
       - name: ☁️ Cache Toolchain
         if: github.event.inputs.force_clean != 'true'
@@ -223,15 +223,14 @@ jobs:
           restore-keys: |
             toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             toolchain-${{ env.REPO_BRANCH }}-
-      - name: ☁️ Cache Staging Directory  
+      - name: ☁️ Cache Staging Directory
         if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/host*
             openwrt/staging_dir/hostpkg
-            openwrt/staging_dir/packages-*
-          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v3
+          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v4  # 版本号+1
           restore-keys: |
             staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             staging-${{ env.REPO_BRANCH }}-
@@ -241,8 +240,7 @@ jobs:
         with:
           path: |
             openwrt/build_dir/host*
-            openwrt/build_dir/target-*
-          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v3
+          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v4  # 版本号+1
           restore-keys: |
             buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             buildhost-${{ env.REPO_BRANCH }}-
@@ -265,20 +263,6 @@ jobs:
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
-      # ============================================
-      # 新增：包构建缓存 (实验性)
-      # ============================================
-      - name: ☁️ Cache Package Builds
-        if: github.event.inputs.force_clean != 'true'
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/build_dir/target-*/linux-*/packages-*
-            openwrt/build_dir/target-*/packages-*
-          key: packages-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v2
-          restore-keys: |
-            packages-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
-            packages-${{ env.REPO_BRANCH }}-
       # ============================================
       # 7. 简化的 Feeds 配置
       # ============================================
