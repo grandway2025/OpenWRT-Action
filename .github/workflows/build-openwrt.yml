@@ -304,7 +304,7 @@ jobs:
           echo "📦 Installing feeds..."
           ./scripts/feeds install -a
       # ============================================
-      # 8. ccache 配置（统一在这里）
+      # 8. ccache 配置（简化安全版本）
       # ============================================
       - name: 🔥 Prepare ccache
         run: |
@@ -316,21 +316,19 @@ jobs:
           
           mkdir -p "$CCACHE_DIR"
           
-          # 优化设置（基于你的49.6%命中率）
-          ccache -M 12G                    # 增加到12G
-          ccache -F 150000                 # 增加到15万文件
-          ccache --set-config=compression=true
-          ccache --set-config=compression_level=1  # 降低压缩级别换取速度
-          ccache --set-config=stats=true
-          ccache --set-config=max_files=150000
-          ccache --set-config=sloppiness=file_macro,locale,time_macros,include_file_ctime
-          ccache --set-config=hash_dir=false      # 提升性能
-          ccache --set-config=cache_dir_levels=3  # 优化目录结构
+          # 基本的安全配置
+          ccache -M 10G
+          ccache -F 100000
           
-          echo "=== Enhanced ccache configuration ==="
-          ccache -p
-          ccache -s
-          echo "====================================="
+          # 只设置确定支持的选项
+          ccache --set-config=compression=true 2>/dev/null || true
+          ccache --set-config=stats=true 2>/dev/null || true
+          ccache --set-config=max_files=100000 2>/dev/null || true
+          
+          echo "=== ccache configuration ==="
+          ccache -p 2>/dev/null || echo "ccache info not available"
+          ccache -s 2>/dev/null || echo "ccache stats not available"
+          echo "=========================="
       # 9. 自定义配置及插件开关
       # ============================================
       - name: 🎨 Apply Custom Configuration
