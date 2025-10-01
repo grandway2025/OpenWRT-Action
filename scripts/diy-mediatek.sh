@@ -10,6 +10,9 @@ sed -i "s/192.168.6.1/$LAN/g" package/base-files/files/bin/config_generate
 # default name
 sed -i 's/ImmortalWrt/OpenWrt/' package/base-files/files/bin/config_generate
 
+# fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
+sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
+
 # TTYD 免登录
 # sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
