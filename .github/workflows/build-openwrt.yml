@@ -210,7 +210,7 @@ jobs:
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
       # ============================================
-      # 6. 优化的缓存策略
+      # 6. 高度优化的缓存策略
       # ============================================
       - name: ☁️ Cache Toolchain
         if: github.event.inputs.force_clean != 'true'
@@ -219,18 +219,21 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v5
+          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v6
           restore-keys: |
+            toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             toolchain-${{ env.REPO_BRANCH }}-
-      - name: ☁️ Cache Staging Directory
+      - name: ☁️ Cache Staging Directory  
         if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/host*
             openwrt/staging_dir/hostpkg
-          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v2
+            openwrt/staging_dir/packages-*
+          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v3
           restore-keys: |
+            staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             staging-${{ env.REPO_BRANCH }}-
       - name: ☁️ Cache Build Host
         if: github.event.inputs.force_clean != 'true'
@@ -238,16 +241,19 @@ jobs:
         with:
           path: |
             openwrt/build_dir/host*
-          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v2
+            openwrt/build_dir/target-*
+          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v3
           restore-keys: |
+            buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             buildhost-${{ env.REPO_BRANCH }}-
             
       - name: ☁️ Cache Downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v4
+          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v5
           restore-keys: |
+            downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             downloads-${{ env.REPO_BRANCH }}-
             
       - name: ☁️ Cache ccache
@@ -255,10 +261,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v5
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ hashFiles('openwrt/.config') }}-v6
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
+      # ============================================
+      # 新增：包构建缓存 (实验性)
+      # ============================================
+      - name: ☁️ Cache Package Builds
+        if: github.event.inputs.force_clean != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/build_dir/target-*/linux-*/packages-*
+            openwrt/build_dir/target-*/packages-*
+          key: packages-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v2
+          restore-keys: |
+            packages-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
+            packages-${{ env.REPO_BRANCH }}-
       # ============================================
       # 7. 简化的 Feeds 配置
       # ============================================
@@ -290,28 +310,27 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 安装并配置 ccache
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           export PATH="/usr/lib/ccache:$PATH"
           
-          # 创建 ccache 目录
           mkdir -p "$CCACHE_DIR"
           
-          # 统一的优化 ccache 配置
-          ccache -M 10G
-          ccache -F 100000
+          # 优化设置（基于你的49.6%命中率）
+          ccache -M 12G                    # 增加到12G
+          ccache -F 150000                 # 增加到15万文件
           ccache --set-config=compression=true
-          ccache --set-config=compression_level=6
+          ccache --set-config=compression_level=1  # 降低压缩级别换取速度
           ccache --set-config=stats=true
-          ccache --set-config=max_files=100000
-          ccache --set-config=sloppiness=file_macro,locale,time_macros
+          ccache --set-config=max_files=150000
+          ccache --set-config=sloppiness=file_macro,locale,time_macros,include_file_ctime
+          ccache --set-config=hash_dir=false      # 提升性能
+          ccache --set-config=cache_dir_levels=3  # 优化目录结构
           
-          echo "=== ccache configuration ==="
+          echo "=== Enhanced ccache configuration ==="
           ccache -p
           ccache -s
-          echo "=========================="
-      # ============================================
+          echo "====================================="
       # 9. 自定义配置及插件开关
       # ============================================
       - name: 🎨 Apply Custom Configuration
@@ -401,26 +420,18 @@ jobs:
       - name: 📥 Download Packages
         run: |
           cd "$OPENWRT_PATH"
-          echo "📥 Starting package download..."
+          echo "📥 Starting optimized package download..."
           
-          # 使用合理的并行数
-          DOWNLOAD_JOBS=$((COMPILE_JOBS < 8 ? COMPILE_JOBS : 8))
+          # 提升下载并行度
+          DOWNLOAD_JOBS=$((COMPILE_JOBS < 16 ? COMPILE_JOBS * 2 : 16))
           
-          if make download -j"$DOWNLOAD_JOBS" 2>&1 | tee download.log; then
-            echo "✅ Download completed successfully"
+          # 使用 aria2 加速下载（如果可用）
+          if command -v aria2c >/dev/null 2>&1; then
+            echo "🚀 Using aria2 for faster downloads"
+            make download -j"$DOWNLOAD_JOBS" DOWNLOAD_TOOL="aria2c -x 4 -s 4" 2>&1 | tee download.log
           else
-            echo "⚠️ Download had issues, cleaning and retrying..."
-            find dl -size -1024c -delete 2>/dev/null || true
-            
-            if make download -j1 2>&1 | tee download_retry.log; then
-              echo "✅ Retry download successful"
-            else
-              echo "❌ Download failed, but continuing with compilation..."
-              tail -n 20 download_retry.log || true
-            fi
+            make download -j"$DOWNLOAD_JOBS" 2>&1 | tee download.log
           fi
-          
-          echo "📊 Downloaded packages: $(find dl -type f | wc -l)"
       # ============================================
       # 12. 编译固件
       # ============================================
