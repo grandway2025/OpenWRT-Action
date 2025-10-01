@@ -594,6 +594,7 @@ jobs:
             | **目标** | `${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}` |
             | **内核** | `${{ steps.organize.outputs.kernel_version }}` |
             | **LAN IP** | `${{ github.event.inputs.lan_addr }}` |
+            | **Password** | `${{ github.event.inputs.root_password }}` |
             
             ### 📦 包含的插件
             | 插件 | 状态 |
