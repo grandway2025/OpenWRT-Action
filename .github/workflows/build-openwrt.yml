@@ -308,7 +308,7 @@ jobs:
           ccache --set-config=compression=true
           ccache --set-config=stats=true
           ccache --set-config=max_files=150000
-          ccache --set-config=sloppiness=file_macro,locale,time_macros  # 🔥 新增
+          ccache --set-config=sloppiness=file_macro,locale,time_macros  # 🚀 提升命中率
           ccache --set-config=hash_dir=false  # 🔥 提升性能
       # 9. 自定义配置及插件开关
       # ============================================
@@ -425,8 +425,8 @@ jobs:
           export PATH="/usr/lib/ccache:$PATH"
           
           # 🔥 额外的编译优化
-          export FORCE_UNSAFE_CONFIGURE=1
-          export CONFIG_CCACHE=y
+          export FORCE_UNSAFE_CONFIGURE=1                           # 跳过一些检查
+          export CONFIG_CCACHE=y                                    # 确保 ccache 启用
           
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
           
