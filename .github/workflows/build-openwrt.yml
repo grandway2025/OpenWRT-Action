@@ -210,7 +210,7 @@ jobs:
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
       # ============================================
-      # 6. 稳定缓存策略
+      # 6. 稳定缓存策略 修复缓存键冲突问题
       # ============================================
       - name: ☁️ Cache Toolchain
         if: github.event.inputs.force_clean != 'true'
@@ -219,7 +219,7 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v6
+          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v7  # 🔥 版本号统一升级
           restore-keys: |
             toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             toolchain-${{ env.REPO_BRANCH }}-
@@ -230,7 +230,7 @@ jobs:
           path: |
             openwrt/staging_dir/host*
             openwrt/staging_dir/hostpkg
-          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v4  # 版本号+1
+          key: staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-v5  # 🔥 版本号升级
           restore-keys: |
             staging-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-
             staging-${{ env.REPO_BRANCH }}-
@@ -240,7 +240,7 @@ jobs:
         with:
           path: |
             openwrt/build_dir/host*
-          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v4  # 版本号+1
+          key: buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v5  # 🔥 版本号升级
           restore-keys: |
             buildhost-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             buildhost-${{ env.REPO_BRANCH }}-
@@ -249,7 +249,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v5
+          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v6  # 🔥 版本号升级
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             downloads-${{ env.REPO_BRANCH }}-
@@ -259,7 +259,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v6
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v7  # 🔥 版本号升级
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
@@ -300,19 +300,16 @@ jobs:
           
           mkdir -p "$CCACHE_DIR"
           
-          # 基本的安全配置
-          ccache -M 10G
-          ccache -F 100000
+          # 🔥 更激进的ccache配置
+          ccache -M 15G  # 增加到15G
+          ccache -F 150000  # 增加文件数
           
-          # 只设置确定支持的选项
-          ccache --set-config=compression=true 2>/dev/null || true
-          ccache --set-config=stats=true 2>/dev/null || true
-          ccache --set-config=max_files=100000 2>/dev/null || true
-          
-          echo "=== ccache configuration ==="
-          ccache -p 2>/dev/null || echo "ccache info not available"
-          ccache -s 2>/dev/null || echo "ccache stats not available"
-          echo "=========================="
+          # 优化设置
+          ccache --set-config=compression=true
+          ccache --set-config=stats=true
+          ccache --set-config=max_files=150000
+          ccache --set-config=sloppiness=file_macro,locale,time_macros  # 🔥 新增
+          ccache --set-config=hash_dir=false  # 🔥 提升性能
       # 9. 自定义配置及插件开关
       # ============================================
       - name: 🎨 Apply Custom Configuration
@@ -423,55 +420,27 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 使用已配置的 ccache
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           export PATH="/usr/lib/ccache:$PATH"
           
+          # 🔥 额外的编译优化
+          export FORCE_UNSAFE_CONFIGURE=1
+          export CONFIG_CCACHE=y
+          
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
-          echo "=== ccache initial stats ==="
-          ccache -s
-          echo "CCACHE_DIR: $CCACHE_DIR"
-          echo "PATH: $PATH"
-          echo "=========================="
           
-          compile_with_jobs() {
-            local jobs=$1
-            local log_file="compile_j${jobs}.log"
-            echo "🔧 Compiling with $jobs jobs..."
-            
-            if timeout 500m make -j"$jobs" 2>&1 | tee "$log_file"; then
-              echo "✅ Compilation successful with $jobs jobs"
-              return 0
-            else
-              echo "❌ Compilation failed with $jobs jobs"
-              return 1
-            fi
-          }
-          
-          # 尝试编译（逐步降低并行度）
-          if compile_with_jobs "$COMPILE_JOBS"; then
+          # 🔥 更智能的编译策略
+          if make -j"$COMPILE_JOBS" V=s 2>&1 | tee compile.log; then
             echo "status=success" >> $GITHUB_OUTPUT
-          elif [ "$COMPILE_JOBS" -gt 2 ] && compile_with_jobs $((COMPILE_JOBS/2)); then
+          elif make -j$((COMPILE_JOBS/2)) V=s 2>&1 | tee compile_half.log; then
             echo "status=success" >> $GITHUB_OUTPUT
-          elif [ "$COMPILE_JOBS" -gt 1 ] && compile_with_jobs 1; then
+          elif make -j1 V=s 2>&1 | tee compile_single.log; then
             echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "❌ All compilation attempts failed"
-            echo "=== Build Error Analysis ==="
-            if [ -f "compile_j1.log" ]; then
-              echo "Last 100 lines of single-threaded build:"
-              tail -n 100 compile_j1.log
-            fi
-            echo "=== Recent package logs ==="
-            find logs -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
             exit 1
           fi
-          
-          echo "=== ccache final stats ==="
-          ccache -s || echo "ccache stats not available"
-          echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
-          echo "========================="
       - name: 📊 Cache Statistics
         if: always()
         run: |
