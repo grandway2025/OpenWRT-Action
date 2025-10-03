@@ -1,7 +1,8 @@
 name: 🚀 Build OpenWrt (Optimized Build)
+
 permissions:
   contents: write
-  actions: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -44,7 +45,8 @@ on:
       force_clean:
         description: "🧹 强制清理缓存"
         type: boolean
-        default: false  
+        default: false
+
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
@@ -55,9 +57,11 @@ env:
   UPLOAD_RELEASE: true
   FIRMWARE_TAG: X86_64
   TZ: Asia/Shanghai
+
 concurrency:
   group: openwrt-build-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   # ============================================
   # 🔧 工具链预编译 (最优策略)
@@ -68,11 +72,10 @@ jobs:
     timeout-minutes: 280
     outputs:
       toolchain_ready: ${{ steps.toolchain.outputs.ready }}
-    steps: 
+    steps:
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+
       - name: 💾 Setup Swap & Memory Optimization
         run: |
           sudo fallocate -l 8G /swapfile
@@ -88,25 +91,32 @@ jobs:
           sudo sysctl -p
           echo "Memory status:"
           free -h
-      - name: 🛠️ Build System Setup
+          
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        
+      - name: 🛠️ 构建环境设置
         uses: sbwml/actions@openwrt-build-setup
+
       - name: 📦 Install LLVM
         uses: sbwml/actions@install-llvm
-      - name: 📥 Prepare OpenWrt Source
+        
+      - name: 📥 准备源码
         run: |
           git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           
           # 配置feeds
-          if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
-            cp "${{ github.workspace }}/feeds.conf.default" .
+          if [ -f "${{ github.workspace }}/$FEEDS_CONF" ]; then
+            cp "${{ github.workspace }}/$FEEDS_CONF" .
             echo "📄 Using custom feeds.conf.default"
           else
             echo "::warning::feeds.conf.default not found, using upstream defaults."
           fi
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
       - name: 🎯 智能缓存键生成
         run: |
           # 基于配置文件的稳定缓存键
@@ -116,6 +126,7 @@ jobs:
           
           echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_ENV
           echo "📋 缓存策略: $CACHE_KEY"
+
       - name: ☁️ 工具链缓存
         uses: actions/cache@v4
         with:
@@ -127,6 +138,7 @@ jobs:
           restore-keys: |
             toolchain-${{ env.CACHE_KEY }}-
             toolchain-${{ env.REPO_BRANCH }}-
+
       - name: 🎨 应用配置
         run: |
           cd "$OPENWRT_PATH"
@@ -138,31 +150,19 @@ jobs:
             "${{ github.workspace }}/$DIY_SCRIPT"
           fi
           make defconfig
+
       - name: 🔨 编译工具链
         id: toolchain
         run: |
           cd "$OPENWRT_PATH"
           
-          echo "🔨 开始工具链编译 ($(date))"
-          echo "💻 CPU核心: $(nproc)"
-          echo "💾 可用内存: $(free -h | grep '^Mem:' | awk '{print $7}')"
-          
-          # 检查缓存命中
-          if [ "${{ steps.cache-toolchain.outputs.cache-hit }}" == "true" ]; then
-            echo "🎯 工具链缓存命中，跳过编译"
-            echo "ready=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # 编译工具链
-          echo "🔨 编译 tools..."
+          echo "🔨 开始工具链编译"
           make tools/compile -j$(nproc) || make tools/compile -j1 V=s
-          
-          echo "🔨 编译 toolchain..."
           make toolchain/compile -j$(nproc) || make toolchain/compile -j1 V=s
           
           echo "✅ 工具链编译完成"
           echo "ready=true" >> $GITHUB_OUTPUT
+
   # ============================================
   # 🏗️ 主编译阶段 (精简优化)
   # ============================================
@@ -175,8 +175,7 @@ jobs:
     steps:
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+
       - name: 💾 Setup Swap & Memory Optimization
         run: |
           sudo fallocate -l 8G /swapfile
@@ -192,30 +191,44 @@ jobs:
           sudo sysctl -p
           echo "Memory status:"
           free -h
-      - name: 🛠️ Build System Setup
+          
+          # 构建信息
+          BUILD_DATE=$(date +'%Y.%m.%d')
+          FILE_DATE=$(date +'%Y.%m.%d-%H%M')
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          echo "FILE_DATE=$FILE_DATE" >> $GITHUB_ENV
+          
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        
+      - name: 🛠️ 构建环境设置
         uses: sbwml/actions@openwrt-build-setup
+
       - name: 📦 Install LLVM
         uses: sbwml/actions@install-llvm
-      - name: 📥 Prepare OpenWrt Source
+
+      - name: 📥 准备源码
         run: |
           git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           
-          if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
-            cp "${{ github.workspace }}/feeds.conf.default" .
+          if [ -f "${{ github.workspace }}/$FEEDS_CONF" ]; then
+            cp "${{ github.workspace }}/$FEEDS_CONF" .
             echo "📄 Using custom feeds.conf.default"
           else
             echo "::warning::feeds.conf.default not found, using upstream defaults."
           fi
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
       - name: 🎯 缓存键生成
         run: |
           CONFIG_HASH=$(sha256sum "${{ github.workspace }}/$CONFIG_FILE" | cut -c1-12)
           MONTH_KEY=$(date +'%Y%m')
           CACHE_KEY="${{ env.REPO_BRANCH }}-${CONFIG_HASH}-${MONTH_KEY}"
           echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_ENV
+
       - name: ☁️ 多层缓存策略
         uses: actions/cache@v4
         with:
@@ -226,6 +239,7 @@ jobs:
           key: toolchain-${{ env.CACHE_KEY }}-v16
           restore-keys: |
             toolchain-${{ env.CACHE_KEY }}-
+
       - name: ☁️ 下载缓存
         uses: actions/cache@v4
         with:
@@ -233,6 +247,7 @@ jobs:
           key: downloads-${{ env.REPO_BRANCH }}-${{ env.CACHE_KEY }}-v8
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-
+
       - name: ☁️ ccache 编译缓存
         uses: actions/cache@v4
         with:
@@ -240,6 +255,7 @@ jobs:
           key: ccache-${{ env.CACHE_KEY }}-${{ github.run_number }}-v12
           restore-keys: |
             ccache-${{ env.CACHE_KEY }}-
+
       - name: 🎯 ccache 高性能配置
         run: |
           cd "$OPENWRT_PATH"
@@ -258,6 +274,7 @@ jobs:
           ccache --set-config=direct_mode=true
           ccache --set-config=base_dir="$PWD"
           ccache --cleanup || true
+
       - name: 🎨 应用配置
         env:
           LAN: ${{ github.event.inputs.lan_addr }}
@@ -303,10 +320,12 @@ jobs:
           DEVICE_SUBTARGET=$(awk -F'"' '/^CONFIG_TARGET_SUBTARGET=/{print $2}' .config)
           echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+
       - name: 📥 下载依赖
         run: |
           cd "$OPENWRT_PATH"
           make download -j16
+
       - name: 🔨 快速编译固件
         timeout-minutes: 360
         run: |
@@ -334,11 +353,11 @@ jobs:
           make package/install target/install package/index -j$(nproc)
           
           echo "✅ 编译完成"
-          echo "status=success" >> $GITHUB_OUTPUT
           
           # 编译后ccache统计
           echo "📊 编译后 ccache 统计:"
           ccache -s
+
       - name: 📦 整理固件
         run: |
           cd "$OPENWRT_PATH/bin/targets"/*/*
@@ -375,6 +394,7 @@ jobs:
           EOF
           
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
       - name: 📊 性能报告
         if: always()
         run: |
@@ -400,6 +420,7 @@ jobs:
               echo "📈 命中率: ${HIT_RATE}%"
             fi
           fi
+
       - name: 🚀 发布固件
         if: env.UPLOAD_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
