@@ -336,10 +336,8 @@ jobs:
           export PATH="/usr/lib/ccache:$PATH"
           
           echo "🚀 开始编译 ($(date))"
-          echo "📊 编译策略: ${{ needs.pre-check.outputs.compile_strategy }}"
           echo "💻 CPU核心: $(nproc)"
           echo "💾 可用内存: $(free -h | grep '^Mem:' | awk '{print $7}')"
-          echo "🔧 编译并行度: $COMPILE_JOBS"
           
           # 最优分阶段编译策略
           echo "🔨 Stage 1: Target compile"
