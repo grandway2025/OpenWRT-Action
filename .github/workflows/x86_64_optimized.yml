@@ -51,6 +51,7 @@ env:
   CONFIG_FILE: configs/x86_64.config
   DIY_SCRIPT: scripts/diy-x86_64_demo.sh
   FEEDS_CONF: feeds.conf.default
+  CLASH_KERNEL: amd64
   UPLOAD_RELEASE: true
   FIRMWARE_TAG: X86_64
   TZ: Asia/Shanghai
@@ -70,6 +71,8 @@ jobs:
     steps: 
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
       - name: 💾 Setup Swap & Memory Optimization
         run: |
           sudo fallocate -l 8G /swapfile
@@ -85,8 +88,6 @@ jobs:
           sudo sysctl -p
           echo "Memory status:"
           free -h
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
       - name: 🛠️ Build System Setup
         uses: sbwml/actions@openwrt-build-setup
       - name: 📦 Install LLVM
@@ -159,6 +160,8 @@ jobs:
     steps:
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
       - name: 💾 Setup Swap & Memory Optimization
         run: |
           sudo fallocate -l 8G /swapfile
@@ -174,8 +177,6 @@ jobs:
           sudo sysctl -p
           echo "Memory status:"
           free -h
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
       - name: 🛠️ Build System Setup
         uses: sbwml/actions@openwrt-build-setup
       - name: 📦 Install LLVM
