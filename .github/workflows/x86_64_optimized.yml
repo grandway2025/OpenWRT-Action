@@ -308,7 +308,7 @@ jobs:
           cd "$OPENWRT_PATH"
           make download -j16
       - name: 🔨 快速编译固件
-        timeout-minutes: 240
+        timeout-minutes: 360
         run: |
           cd "$OPENWRT_PATH"
           
