@@ -171,7 +171,7 @@ jobs:
     needs: prepare-toolchain
     if: needs.prepare-toolchain.outputs.toolchain_ready == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 200
+    timeout-minutes: 400
     steps:
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
