@@ -334,6 +334,11 @@ jobs:
           make package/install target/install package/index -j$(nproc)
           
           echo "✅ 编译完成"
+          echo "status=success" >> $GITHUB_OUTPUT
+          
+          # 编译后ccache统计
+          echo "📊 编译后 ccache 统计:"
+          ccache -s
       - name: 📦 整理固件
         run: |
           cd "$OPENWRT_PATH/bin/targets"/*/*
