@@ -1,0 +1,88 @@
+name: 🔧 Build Toolchain (OpenWrt 24.10)
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "目标平台 (用逗号分隔)"
+        default: "x86_64"
+        required: true
+        type: string
+  schedule:
+    - cron: '0 2 * * 0'  # 每周日自动构建
+env:
+  REPO_URL: https://github.com/openwrt/openwrt
+  REPO_BRANCH: openwrt-24.10
+  TZ: Asia/Shanghai
+jobs:
+  build-toolchain:
+    name: 🔧 Build ${{ matrix.target }} Toolchain
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(format('["{0}"]', join(fromJson(format('["{0}"]', github.event.inputs.targets || 'x86_64')), '","'))) }}
+    
+    steps:
+      - name: 🔧 Setup Environment
+        run: |
+          sudo timedatectl set-timezone "$TZ"
+          echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+          
+      - name: 🧹 Free Disk Space
+        uses: sbwml/actions@free-disk
+        
+      - name: 🛠️ Build System Setup
+        uses: sbwml/actions@openwrt-build-setup
+        
+      - name: 📦 Install LLVM
+        uses: sbwml/actions@install-llvm
+        
+      - name: 📥 Clone OpenWrt
+        run: |
+          git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+          cd openwrt
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+          echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          
+      - name: 📚 Configure Feeds
+        run: |
+          cd "$OPENWRT_PATH"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+      - name: ⚙️ Configure Target
+        run: |
+          cd "$OPENWRT_PATH"
+          case "${{ matrix.target }}" in
+            "x86_64")
+              echo "CONFIG_TARGET_x86=y" > .config
+              echo "CONFIG_TARGET_x86_64=y" >> .config
+              ;;
+            "nanopi-r5s")
+              echo "CONFIG_TARGET_rockchip=y" > .config
+              echo "CONFIG_TARGET_rockchip_armv8=y" >> .config
+              ;;
+            # 添加更多目标...
+          esac
+          make defconfig
+          
+      - name: 🔨 Build Toolchain
+        run: |
+          cd "$OPENWRT_PATH"
+          make -j$(nproc) tools/install
+          make -j$(nproc) toolchain/install
+          
+      - name: 📦 Package Toolchain
+        run: |
+          cd "$OPENWRT_PATH"
+          tar -czf "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz" \
+            staging_dir/toolchain-* build_dir/toolchain-*
+            
+      - name: 🚀 Upload Toolchain
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          name: Toolchain-${{ env.REPO_BRANCH }}-${{ env.BUILD_DATE }}
+          allowUpdates: true
+          tag: toolchain-${{ env.REPO_BRANCH }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
