@@ -46,7 +46,7 @@ on:
       use_prebuilt_toolchain:
         description: "🔧 使用预编译工具链"
         type: boolean
-        default: true
+        default: false  # 🔥 默认关闭，避免兼容性问题
 env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
@@ -66,7 +66,7 @@ jobs:
   build:
     name: 🏗️ Build OpenWrt
     runs-on: ubuntu-24.04
-    timeout-minutes: 480  # 减少到8小时
+    timeout-minutes: 720
     outputs:
       firmware_path: ${{ steps.organize.outputs.firmware_path }}
       kernel_version: ${{ steps.organize.outputs.kernel_version }}
@@ -86,19 +86,38 @@ jobs:
           BUILD_ID="${{ github.run_number }}-${GITHUB_SHA::7}"
           FILE_DATE=$(date +'%Y.%m.%d-%H%M')
           
-          # 优化并行度计算
+          # 优化并行度计算 - 更保守的策略
           PROC_COUNT=$(nproc)
           MEM_GB=$(($(free -m | awk '/^Mem:/{print $2}') / 1024))
-          JOBS=$((MEM_GB / 3))  # 更保守的内存使用
-          JOBS=$((JOBS > PROC_COUNT ? PROC_COUNT : JOBS))
+          
+          # 🔥 修复：更保守的并行度计算
+          if [ $MEM_GB -lt 8 ]; then
+            JOBS=2
+          elif [ $MEM_GB -lt 16 ]; then
+            JOBS=4
+          else
+            JOBS=$((MEM_GB / 4))
+            JOBS=$((JOBS > PROC_COUNT ? PROC_COUNT : JOBS))
+          fi
           JOBS=$((JOBS < 1 ? 1 : JOBS))
           
-          # 智能缓存键生成
+          # 插件哈希
           PLUGINS_KEY="${{ github.event.inputs.docker }}-${{ github.event.inputs.ssrp }}-${{ github.event.inputs.passwall }}-${{ github.event.inputs.nikki }}-${{ github.event.inputs.openclash }}-${{ github.event.inputs.lucky }}-${{ github.event.inputs.oaf }}"
           PLUGINS_HASH=$(echo "$PLUGINS_KEY" | sha256sum | cut -c1-12)
           
-          # 月度键（更长的缓存周期）
+          # 月度键
           MONTH_KEY=$(date +'%Y%m')
+          
+          # 显示系统信息
+          echo "====================================="
+          echo "📊 System Information"
+          echo "====================================="
+          echo "CPU: $(nproc) cores"
+          echo "Memory: ${MEM_GB}GB"
+          echo "Compile Jobs: $JOBS"
+          echo "Build: $VERSION ($BUILD_ID)"
+          echo "Plugins Hash: $PLUGINS_HASH"
+          echo "====================================="
           
           # 导出环境变量
           {
@@ -118,19 +137,16 @@ jobs:
         
       - name: 💾 Setup Swap & Memory Optimization
         run: |
-          # 创建更大的交换文件
-          sudo fallocate -l 16G /swapfile
+          sudo fallocate -l 8G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
           
-          # 优化系统参数
           sudo tee -a /etc/sysctl.conf >/dev/null <<EOF
-          vm.swappiness=5
-          vm.vfs_cache_pressure=30
-          vm.dirty_ratio=10
-          vm.dirty_background_ratio=3
-          vm.overcommit_memory=1
+          vm.swappiness=10
+          vm.vfs_cache_pressure=50
+          vm.dirty_ratio=15
+          vm.dirty_background_ratio=5
           EOF
           sudo sysctl -p
       # ============================================
@@ -182,49 +198,41 @@ jobs:
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
       # ============================================
-      # 6. 高效缓存策略
+      # 6. 🔥 修复后的缓存策略
       # ============================================
-      - name: ☁️ Cache Downloads (永久)
+      - name: ☁️ Cache Downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v8
+          key: downloads-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-v9
           restore-keys: |
             downloads-${{ env.REPO_BRANCH }}-
             downloads-
-      - name: ☁️ Cache Feeds
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/feeds
-            openwrt/package/feeds
-          key: feeds-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-v3
-          restore-keys: |
-            feeds-${{ env.REPO_BRANCH }}-
-      - name: ☁️ Cache ccache (智能)
+      - name: ☁️ Cache ccache
         if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.SOURCE_HASH }}-v8
+          key: ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-${{ env.MONTH_KEY }}-v9
           restore-keys: |
             ccache-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.REPO_BRANCH }}-
-      - name: ☁️ Cache Staging (基于源码)
+      # 🔥 只有在不使用预编译工具链时才缓存工具链
+      - name: ☁️ Cache Toolchain
         if: github.event.inputs.force_clean != 'true' && github.event.inputs.use_prebuilt_toolchain != 'true'
         uses: actions/cache@v4
         with:
           path: |
+            openwrt/staging_dir/toolchain-*
+            openwrt/build_dir/toolchain-*
             openwrt/staging_dir/host*
             openwrt/staging_dir/hostpkg
-            openwrt/staging_dir/toolchain-*
             openwrt/build_dir/host*
-            openwrt/build_dir/toolchain-*
-          key: staging-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-v8
+          key: toolchain-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-v9
           restore-keys: |
-            staging-${{ env.REPO_BRANCH }}-
+            toolchain-${{ env.REPO_BRANCH }}-
       # ============================================
-      # 7. 预编译工具链下载
+      # 7. 🔥 修复预编译工具链逻辑
       # ============================================
       - name: 🔧 Download Prebuilt Toolchain
         if: github.event.inputs.use_prebuilt_toolchain == 'true'
@@ -235,7 +243,7 @@ jobs:
           # 尝试下载预编译工具链
           TOOLCHAIN_URL="https://github.com/${{ github.repository }}/releases/download/toolchain-${{ env.REPO_BRANCH }}/toolchain-x86_64-${{ env.SOURCE_HASH }}.tar.gz"
           
-          if curl -fsSL "$TOOLCHAIN_URL" -o toolchain.tar.gz; then
+          if curl -fsSL "$TOOLCHAIN_URL" -o toolchain.tar.gz 2>/dev/null; then
             echo "✅ Found prebuilt toolchain, extracting..."
             tar -xzf toolchain.tar.gz
             rm toolchain.tar.gz
@@ -251,21 +259,15 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 检查是否有缓存的feeds
-          if [ ! -d "feeds" ] || [ -z "$(ls -A feeds 2>/dev/null)" ]; then
-            echo "🔄 Updating feeds..."
-            rm -rf feeds tmp/packagecache
-            
-            if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
-              cp "${{ github.workspace }}/feeds.conf.default" .
-            fi
-            
-            ./scripts/feeds update -a
-            ./scripts/feeds install -a
-          else
-            echo "✅ Using cached feeds"
-            ./scripts/feeds install -a
+          echo "🔄 Updating feeds..."
+          rm -rf feeds tmp/packagecache
+          
+          if [ -f "${{ github.workspace }}/feeds.conf.default" ]; then
+            cp "${{ github.workspace }}/feeds.conf.default" .
           fi
+          
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
       # ============================================
       # 9. ccache 配置
       # ============================================
@@ -279,21 +281,18 @@ jobs:
           
           mkdir -p "$CCACHE_DIR"
           
-          # 激进的ccache配置
-          ccache -M 20G
-          ccache -F 200000
+          # 🔥 适中的ccache配置，避免内存不足
+          ccache -M 12G
+          ccache -F 100000
           
-          # 高级优化设置
           ccache --set-config=compression=true
-          ccache --set-config=compression_level=6
           ccache --set-config=stats=true
-          ccache --set-config=max_files=200000
-          ccache --set-config=sloppiness=file_macro,locale,time_macros,include_file_mtime
+          ccache --set-config=max_files=100000
+          ccache --set-config=sloppiness=file_macro,locale,time_macros
           ccache --set-config=hash_dir=false
-          ccache --set-config=base_dir="$PWD"
           
           echo "📊 ccache configuration:"
-          ccache --show-config | head -20
+          ccache -p | head -10
           echo "📊 Initial ccache stats:"
           ccache -s
       # ============================================
@@ -313,15 +312,28 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 复制配置和脚本
+          # 复制配置文件
           cp "${{ github.workspace }}/$CONFIG_FILE" .config
           
+          # 执行自定义脚本
           if [ -f "${{ github.workspace }}/$DIY_SCRIPT" ]; then
             chmod +x "${{ github.workspace }}/$DIY_SCRIPT"
             "${{ github.workspace }}/$DIY_SCRIPT"
           fi
           
+          # 🔥 确保脚本存在后再执行
+          if [ -f "${{ github.workspace }}/scripts/preset-mihimo-core.sh" ]; then
+            chmod +x "${{ github.workspace }}/scripts/preset-mihimo-core.sh"
+            "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL"
+          fi
+          
+          if [ -f "${{ github.workspace }}/scripts/preset-adguard-core.sh" ]; then
+            chmod +x "${{ github.workspace }}/scripts/preset-adguard-core.sh"
+            "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL"
+          fi
+          
           # 生成配置
+          echo "⚙️ Generating defconfig..."
           make defconfig
           
           # 提取目标信息
@@ -332,25 +344,37 @@ jobs:
             echo "DEVICE_TARGET=$DEVICE_TARGET"
             echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
           } >> $GITHUB_ENV
+          
+          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
       # ============================================
-      # 11. 下载依赖
+      # 11. 强制清理
+      # ============================================
+      - name: 🧹 Clean Build Directory
+        if: github.event.inputs.force_clean == 'true'
+        run: |
+          cd "$OPENWRT_PATH"
+          echo "🧹 Force cleaning build directory..."
+          make dirclean
+          make defconfig
+      # ============================================
+      # 12. 下载依赖
       # ============================================
       - name: 📥 Download Packages
         run: |
           cd "$OPENWRT_PATH"
           echo "📥 Downloading packages..."
           
-          # 智能下载并行度
-          DOWNLOAD_JOBS=$((COMPILE_JOBS * 3))
-          DOWNLOAD_JOBS=$((DOWNLOAD_JOBS > 32 ? 32 : DOWNLOAD_JOBS))
+          # 适中的下载并行度
+          DOWNLOAD_JOBS=$((COMPILE_JOBS * 2))
+          DOWNLOAD_JOBS=$((DOWNLOAD_JOBS > 16 ? 16 : DOWNLOAD_JOBS))
           
           make download -j"$DOWNLOAD_JOBS" || make download -j1
       # ============================================
-      # 12. 编译固件
+      # 13. 🔥 修复后的编译策略
       # ============================================
       - name: 🔨 Compile Firmware
         id: compile
-        timeout-minutes: 360
+        timeout-minutes: 600
         run: |
           cd "$OPENWRT_PATH"
           
@@ -362,17 +386,29 @@ jobs:
           echo "🔨 Starting compilation..."
           echo "💾 Available memory: $(free -h | grep '^Mem:' | awk '{print $7}')"
           echo "🔧 Using $COMPILE_JOBS jobs"
+          
           echo "📊 ccache stats (before):"
           ccache -s
           
-          # 智能编译策略
-          if [ "$TOOLCHAIN_PREBUILT" = "true" ]; then
-            echo "🚀 Using prebuilt toolchain, skipping tools/toolchain build"
-            make -j"$COMPILE_JOBS" target/compile package/compile package/install || \
-            make -j1 target/compile package/compile package/install V=s
+          # 🔥 修复编译策略 - 统一的编译流程
+          echo "🚀 Building firmware..."
+          
+          # 第一次尝试：并行编译
+          if make -j"$COMPILE_JOBS"; then
+            echo "✅ Parallel compilation succeeded"
           else
-            echo "🔨 Building everything from scratch"
-            make -j"$COMPILE_JOBS" || make -j1 V=s
+            echo "⚠️ Parallel compilation failed, trying single-threaded..."
+            # 第二次尝试：单线程编译
+            if make -j1 V=s; then
+              echo "✅ Single-threaded compilation succeeded"
+            else
+              echo "❌ Compilation failed"
+              
+              # 输出详细错误信息
+              echo "=== Build Error Details ==="
+              find . -name "*.log" -exec echo "=== {} ===" \; -exec tail -50 {} \; 2>/dev/null || true
+              exit 1
+            fi
           fi
           
           echo "status=success" >> $GITHUB_OUTPUT
@@ -381,7 +417,7 @@ jobs:
           echo "📊 ccache stats (after):"
           ccache -s
       # ============================================
-      # 13. 缓存统计
+      # 14. 缓存统计
       # ============================================
       - name: 📊 Cache Statistics
         if: always()
@@ -394,28 +430,31 @@ jobs:
           echo ""
           
           echo "📁 Directory Sizes:"
-          du -sh dl/ 2>/dev/null | sed 's/^/  /'
-          du -sh .ccache/ 2>/dev/null | sed 's/^/  /'
-          du -sh staging_dir/ 2>/dev/null | sed 's/^/  /'
-          du -sh feeds/ 2>/dev/null | sed 's/^/  /'
+          du -sh dl/ 2>/dev/null | sed 's/^/  /' || echo "  dl/: Not found"
+          du -sh .ccache/ 2>/dev/null | sed 's/^/  /' || echo "  .ccache/: Not found"
+          du -sh staging_dir/ 2>/dev/null | sed 's/^/  /' || echo "  staging_dir/: Not found"
           echo ""
           
           echo "🎯 ccache Statistics:"
           export CCACHE_DIR="$PWD/.ccache"
-          ccache -s | grep -E "(cache hit|cache miss|hit rate)" | sed 's/^/  /'
+          ccache -s | grep -E "(cache hit|cache miss|hit rate)" | sed 's/^/  /' || echo "  ccache stats not available"
           echo ""
           
-          echo "🔧 Toolchain Status:"
-          echo "  Prebuilt: ${TOOLCHAIN_PREBUILT:-false}"
+          echo "🔧 Build Status:"
+          echo "  Prebuilt Toolchain: ${TOOLCHAIN_PREBUILT:-false}"
+          echo "  Compile Jobs: $COMPILE_JOBS"
           echo "================================="
       # ============================================
-      # 14. 整理固件
+      # 15. 整理固件
       # ============================================
       - name: 📦 Organize Firmware
         if: steps.compile.outputs.status == 'success'
         id: organize
         run: |
           cd "$OPENWRT_PATH/bin/targets"/*/*
+          
+          echo "=== Generated Files ==="
+          ls -lah
           
           # 获取内核版本
           KERNEL_VERSION="unknown"
@@ -457,7 +496,7 @@ jobs:
           
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
       # ============================================
-      # 15. 上传和发布
+      # 16. 上传和发布
       # ============================================
       - name: 📤 Upload Artifacts
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_ARTIFACTS == 'true'
@@ -471,13 +510,13 @@ jobs:
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
         uses: ncipollo/release-action@v1.14.0
         with:
-          name: ${{ env.FILE_DATE }} • ${{ env.FIRMWARE_TAG }} • Optimized
+          name: ${{ env.FILE_DATE }} • ${{ env.FIRMWARE_TAG }} • Fixed
           allowUpdates: true
           tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
-            ## 🎯 OpenWrt Firmware [${{ env.BUILD_ID }}] - Optimized Build
+            ## 🎯 OpenWrt Firmware [${{ env.BUILD_ID }}] - Fixed Build
             
             ### 📊 构建信息
             | 项目 | 信息 |
@@ -486,15 +525,14 @@ jobs:
             | **目标** | `${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}` |
             | **内核** | `${{ steps.organize.outputs.kernel_version }}` |
             | **源码哈希** | `${{ env.SOURCE_HASH }}` |
-            | **预编译工具链** | `${TOOLCHAIN_PREBUILT:-false}` |
             | **LAN IP** | `${{ github.event.inputs.lan_addr }}` |
             | **密码** | `${{ github.event.inputs.root_password }}` |
             
-            ### 🚀 优化特性
-            - ✅ 智能缓存策略，提高命中率至 80%+
-            - ✅ 预编译工具链支持，大幅减少编译时间
-            - ✅ 基于源码哈希的稳定缓存键
-            - ✅ 优化的内存和并行度配置
+            ### 🔧 修复内容
+            - ✅ 修复了预编译工具链兼容性问题
+            - ✅ 优化了编译策略和错误处理
+            - ✅ 改进了缓存逻辑和并行度计算
+            - ✅ 增强了错误诊断和日志输出
             
             ### 📦 包含的插件
             | 插件 | 状态 |
