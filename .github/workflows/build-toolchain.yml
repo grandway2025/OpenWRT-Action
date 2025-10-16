@@ -76,7 +76,8 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           du -sh staging_dir/toolchain-* build_dir/toolchain-*
-      - name: 📦 Package Toolchain run: |
+      - name: 📦 Package Toolchain 
+        run: |
           cd "$OPENWRT_PATH"
           tar -czf "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz" staging_dir/toolchain-* build_dir/toolchain-*
       - name: 🚀 Upload Toolchain
