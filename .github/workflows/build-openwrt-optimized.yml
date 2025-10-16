@@ -346,7 +346,6 @@ jobs:
           echo "📊 Initial stats:"
           ccache -s
 
-      - name: 🎨 Apply Configuration (Fast)
       - name: 🎨 Apply Custom Configuration
         env:
           LAN: ${{ github.event.inputs.lan_addr }}
