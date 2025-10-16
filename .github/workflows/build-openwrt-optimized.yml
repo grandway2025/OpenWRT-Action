@@ -35,11 +35,11 @@ on:
         default: true
       openclash:
         description: "⚡ OpenClash"
- type: boolean
+        type: boolean
         default: true
       lucky:
         description: "🍀 Lucky"
-       : boolean
+        type: boolean
         default: true
       oaf:
         description: "🛡️ OpenAppFilter"
@@ -85,7 +85,7 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
- VERSION=$(date +'%Y.%m.%d')
+          VERSION=$(date +'%Y.%m.%d')
           BUILD_ID="${{ github.run_number }}-${GITHUB_SHA::7}"
           FILE_DATE=$(date +'%Y.%m.%d-%H%M')
 
@@ -362,7 +362,7 @@ jobs:
 
       # ================ 缓存状态统计 & 工具链打包 ===================
       - name: 📊 Cache Statistics & Toolchain Backup
- if: always()
+        if: always()
         run: |
           cd "$OPENWRT_PATH"
           echo "Ultimate Cache Report:"
@@ -408,7 +408,7 @@ jobs:
       - name: 📦 Organize Firmware
         if: steps.compile.outputs.status == 'success'
         id: organize
-       : |
+        run: |
           cd "$OPENWRT_PATH/bin/targets"/*/*
           echo "Generated Files:"
           ls -lah
