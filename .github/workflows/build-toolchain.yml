@@ -84,6 +84,7 @@ jobs:
         uses: ncipollo/release-action@v1.14.0
         with:
           name: Toolchain-${{ env.REPO_BRANCH }}-${{ env.BUILD_DATE }}
-          allowUpdates: true          tag: toolchain-${{ env.REPO_BRANCH }}
+          allowUpdates: true          
+          tag: toolchain-${{ env.REPO_BRANCH }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: "toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
