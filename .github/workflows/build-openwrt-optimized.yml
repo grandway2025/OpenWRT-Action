@@ -563,7 +563,7 @@ jobs:
           echo "================================="
 
       - name: 📦 Organize Firmware
-        if: ${{ steps.compile.outputs.status == 'success' }}
+        if: steps.compile.outputs.status == 'success'
         id: organize
         run: |
           cd "$OPENWRT_PATH/bin/targets"/*/*
@@ -571,51 +571,53 @@ jobs:
           echo "=== Generated Files ==="
           ls -lah
           
+          # 获取内核版本
           KERNEL_VERSION="unknown"
           if ls *.manifest 1> /dev/null 2>&1; then
             KERNEL_VERSION=$(grep "^kernel " *.manifest | head -1 | awk '{print $3}' | cut -d- -f1-2 || echo "unknown")
           fi
           
+          # 复制配置文件
           cp "$OPENWRT_PATH/.config" build.config
           
+          # 打包内核模块
           if [ -d packages ]; then
             tar -czf kernel-modules.tar.gz packages/
             rm -rf packages
           fi
           
+          # 清理不需要的文件
           rm -f feeds.buildinfo version.buildinfo *.manifest
           
-          # 性能信息
-          cat > performance_info.json <<EOF
-{
-  "cache_hit_rate": "${{ steps.cache-stats.outputs.hit_rate }}%",
-  "compile_time": "${{ steps.compile.outputs.compile_time }}s",
-  "prebuilt_toolchain": ${TOOLCHAIN_PREBUILT:-false},
-  "parallel_jobs": $COMPILE_JOBS
-}
-EOF
-          
-          # 固件信息
+          # 生成固件信息
           cat > firmware_info.json <<EOF
-{
-  "build_date": "$(date +'%Y-%m-%d %H:%M:%S')",
-  "build_version": "$VERSION",
-  "build_id": "$BUILD_ID",
-  "kernel_version": "$KERNEL_VERSION",
-  "source_hash": "$SOURCE_HASH",
-  "target": "$DEVICE_TARGET",
-  "subtarget": "$DEVICE_SUBTARGET",
-  "lan_address": "${{ inputs.lan_addr }}",
-  "performance": {
-    "cache_hit_rate": "${{ steps.cache-stats.outputs.hit_rate }}%",
-    "compile_time": "${{ steps.compile.outputs.compile_time }}s",
-    "turbo_optimized": true
-  }
-}
-EOF
+          {
+            "build_date": "$BUILD_DATE",
+            "build_version": "$BUILD_VERSION",
+            "build_id": "$BUILD_ID",
+            "kernel_version": "$KERNEL_VERSION",
+            "source_hash": "$SOURCE_HASH",
+            "toolchain_prebuilt": ${TOOLCHAIN_PREBUILT:-false},
+            "target": "$DEVICE_TARGET",
+            "subtarget": "$DEVICE_SUBTARGET",
+            "lan_address": "${{ github.event.inputs.lan_addr }}",
+            "plugins": {
+              "docker": ${{ github.event.inputs.docker }},
+              "ssrp": ${{ github.event.inputs.ssrp }},
+              "passwall": ${{ github.event.inputs.passwall }},
+              "openclash": ${{ github.event.inputs.openclash }},
+              "nikki": ${{ github.event.inputs.nikki }},
+              "lucky": ${{ github.event.inputs.lucky }},
+              "oaf": ${{ github.event.inputs.oaf }}
+            }
+          }
+          EOF
           
-          echo "firmware_path=$PWD" >> $GITHUB_OUTPUT
-          echo "kernel_version=$KERNEL_VERSION" >> $GITHUB_OUTPUT
+          {
+            echo "firmware_path=$PWD"
+            echo "kernel_version=$KERNEL_VERSION"
+          } >> $GITHUB_OUTPUT
+          
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
       - name: 📤 Upload Artifacts
