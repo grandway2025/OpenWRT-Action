@@ -205,13 +205,13 @@ jobs:
       - name: 🧠 Skip Toolchain Rebuild Check
         run: |
           cd "$OPENWRT_PATH"
-          if compgen -G "staging_dir/toolchain-*"; then
+          if ls staging_dir/toolchain-*/*toolchain.tar.gz >/dev/null 2>&1; then
             echo "✅ Prebuilt toolchain detected, skipping toolchain rebuild."
           else
             echo "⚠️ No prebuilt toolchain found, toolchain will build normally."
           fi
       - name: Upload Toolchain (hashed)
-        if: success() && fileExists('staging_dir/toolchain-*/toolchain.tar.gz')
+        if: success() && (ls ${{ github.workspace }}/openwrt/staging_dir/toolchain-*/toolchain.tar.gz >/dev/null 2>&1)
         uses: actions/upload-artifact@v2
         with:
           name: toolchain-${{ env.TOOLCHAIN_VERSION }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
