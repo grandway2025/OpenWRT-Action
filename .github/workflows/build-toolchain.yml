@@ -6,9 +6,9 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      targets:
-        description: "目标平台 (逗号分隔，例如: x86_64,nanopi-r5s)"
-        default: "x86_64"
+      targets_json:
+        description: '目标平台 JSON 数组（示例：["x86_64","nanopi-r5s"])'
+        default: '["x86_64"]'
         required: true
         type: string
   schedule:
@@ -27,8 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 修复：使用 format + fromJson 生成矩阵数组（避免 + 连接导致的语法错误）
-        target: ${{ fromJson(format('["{0}"]', replace(github.event.inputs.targets || 'x86_64', ',', '","'))) }}
+        # 直接从 JSON 数组输入解析，避免 replace/split 报错
+        target: ${{ fromJson(github.event.inputs.targets_json) }}
 
     steps:
       - name: ✅ Checkout
@@ -188,14 +188,6 @@ jobs:
           OUT="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
           tar -czf "../$OUT" staging_dir/toolchain-* build_dir/toolchain-*
           echo "artifact_path=../$OUT" >> $GITHUB_OUTPUT
-          cat > "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.json" <<EOF
-          {
-            "branch": "${{ env.REPO_BRANCH }}",
-            "target": "${{ matrix.target }}",
-            "source_hash": "${{ env.SOURCE_HASH }}",
-            "build_date": "${{ env.BUILD_DATE }}"
-          }
-          EOF
 
       - name: 🚀 Upload Toolchain (hashed)
         if: steps.check.outputs.skip == 'false'
@@ -205,9 +197,7 @@ jobs:
           allowUpdates: true
           tag: ${{ env.RELEASE_TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: |
-            ${{ steps.package.outputs.artifact_path }}
-            toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.json
+          artifacts: ${{ steps.package.outputs.artifact_path }}
 
       - name: 🔁 Ensure 'latest' Alias
         env:
@@ -221,11 +211,7 @@ jobs:
               [ -f "$HASHED" ] || gh release download "$TAG" -p "$HASHED" -D .
               cp "$HASHED" "$LATEST"
               gh release upload "$TAG" "$LATEST" --clobber
-            else
-              echo "latest exists, skip."
             fi
-          else
-            echo "::warning::release $TAG not found"
           fi
 
       - name: 📊 Build Summary
