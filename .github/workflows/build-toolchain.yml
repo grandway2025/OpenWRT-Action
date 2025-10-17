@@ -1,4 +1,3 @@
-# .github/workflows/build-toolchain.yml
 name: 🔧 Build & Publish Toolchain (OpenWrt 24.10)
 permissions:
   contents: write
@@ -19,7 +18,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   TZ: Asia/Shanghai
-  CACHE_VERSION: v2025-03-01
+  CACHE_VERSION: v20250301
 
 jobs:
   build-toolchain:
@@ -31,7 +30,7 @@ jobs:
         target: ${{ fromJson('["' + replace(github.event.inputs.targets || 'x86_64', ',', '","') + '"]') }}
 
     steps:
-      - name: ✅ Checkout
+      - name: ✅ Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -39,9 +38,16 @@ jobs:
       - name: 🔧 Setup Environment
         run: |
           sudo timedatectl set-timezone "$TZ"
-          echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
-          echo "MONTH_KEY=$(date +'%Y%m')" >> $GITHUB_ENV
-          echo "RELEASE_TAG=toolchain-$REPO_BRANCH" >> $GITHUB_ENV
+          BUILD_DATE=$(date +'%Y.%m.%d')
+          MONTH_KEY=$(date +'%Y%m')
+          TARGET_KEY="${{ matrix.target }}"
+          {
+            echo "BUILD_DATE=$BUILD_DATE"
+            echo "MONTH_KEY=$MONTH_KEY"
+            echo "TARGET_KEY=$TARGET_KEY"
+            echo "RELEASE_TAG=toolchain-$REPO_BRANCH"
+            echo "CCACHE_KEY=toolchain-ccache-${CACHE_VERSION}-${REPO_BRANCH}-${TARGET_KEY}"
+          } >> $GITHUB_ENV
 
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
@@ -58,17 +64,19 @@ jobs:
           git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          SOURCE_HASH=$(git rev-parse HEAD)
+          echo "SOURCE_HASH=$SOURCE_HASH" >> $GITHUB_ENV
 
       - name: ☁️ Cache Downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-v1
+          key: downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-v1
           restore-keys: |
+            downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             downloads-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Feeds & Index (monthly)
+      - name: ☁️ Cache Feeds & Package Index
         uses: actions/cache@v4
         with:
           path: |
@@ -79,32 +87,33 @@ jobs:
             feeds-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             feeds-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Toolchain (source-based)
+      - name: ☁️ Cache Toolchain (source hash)
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-${{ matrix.target }}-v1
+          key: toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-${{ env.TARGET_KEY }}-v1
           restore-keys: |
-            toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ matrix.target }}-
+            toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-
             toolchain-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Build Host (monthly)
+      - name: ☁️ Cache Build Host
         uses: actions/cache@v4
         with:
           path: openwrt/build_dir/host*
-          key: host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-v1
+          key: host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-v1
           restore-keys: |
             host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             host-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache ccache (shared per branch)
+      - name: ☁️ Cache ccache
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: toolchain-ccache-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-v1
+          key: ${{ env.CCACHE_KEY }}-v1
           restore-keys: |
+            toolchain-ccache-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             toolchain-ccache-${{ env.REPO_BRANCH }}-
 
       - name: 📚 Configure Feeds
@@ -135,17 +144,18 @@ jobs:
               ;;
           esac
           make defconfig
+          CONFIG_DIGEST=$(sha256sum .config | cut -c1-12)
+          echo "CONFIG_DIGEST=$CONFIG_DIGEST" >> $GITHUB_ENV
 
       - name: 🔧 Setup ccache
         run: |
           cd "$OPENWRT_PATH"
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
-          export CCACHE_BASEDIR="$PWD"
           export PATH="/usr/lib/ccache:$PATH"
           mkdir -p "$CCACHE_DIR"
-          ccache --set-config=max_size=15G
-          ccache --set-config=max_files=250000
+          ccache --set-config=max_size=10G
+          ccache --set-config=max_files=200000
           ccache --set-config=compression=true
           ccache --set-config=compiler_check=content
           ccache --set-config=hash_dir=false
@@ -156,7 +166,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: 🔍 Skip If Already Published
+      - name: 🔍 Check Existing Artifact
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,9 +175,10 @@ jobs:
           ASSET="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
           if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "$ASSET"; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "✅ Found existing $ASSET. Skip build."
+            echo "✅ Found $ASSET, skipping build."
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ $ASSET not found, building."
           fi
 
       - name: 🔨 Build Toolchain
@@ -187,12 +198,12 @@ jobs:
           OUT="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
           tar -czf "../$OUT" staging_dir/toolchain-* build_dir/toolchain-*
           echo "artifact_path=../$OUT" >> $GITHUB_OUTPUT
-          echo "artifact_name=$OUT" >> $GITHUB_OUTPUT
           cat > "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.json" <<EOF
           {
             "branch": "${{ env.REPO_BRANCH }}",
             "target": "${{ matrix.target }}",
             "source_hash": "${{ env.SOURCE_HASH }}",
+            "config_digest": "${{ env.CONFIG_DIGEST }}",
             "build_date": "${{ env.BUILD_DATE }}"
           }
           EOF
@@ -218,14 +229,16 @@ jobs:
           LATEST="toolchain-${{ matrix.target }}-latest.tar.gz"
           if gh release view "$TAG" >/dev/null 2>&1; then
             if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "$LATEST"; then
-              [ -f "$HASHED" ] || gh release download "$TAG" -p "$HASHED" -D .
+              if [ ! -f "$HASHED" ]; then
+                gh release download "$TAG" -p "$HASHED" -D .
+              fi
               cp "$HASHED" "$LATEST"
               gh release upload "$TAG" "$LATEST" --clobber
             else
-              echo "latest exists, skip."
+              echo "Latest alias already present."
             fi
           else
-            echo "::warning::release $TAG not found"
+            echo "::warning::Release tag $TAG not found."
           fi
 
       - name: 📊 Build Summary
@@ -233,4 +246,6 @@ jobs:
           echo "Target: ${{ matrix.target }}"
           echo "Branch: ${{ env.REPO_BRANCH }}"
           echo "Source hash: ${{ env.SOURCE_HASH }}"
+          echo "Config digest: ${{ env.CONFIG_DIGEST }}"
+          echo "Release tag: ${{ env.RELEASE_TAG }}"
           ls -lh .. | grep toolchain || true
