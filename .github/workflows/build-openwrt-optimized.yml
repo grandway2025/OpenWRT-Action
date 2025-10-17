@@ -177,45 +177,40 @@ jobs:
       # ============================================
       # 6. 工具链缓存及预编译复用
       # ============================================
-      - name: ☁️ Cache Prebuilt Toolchain
-        if: github.event.inputs.force_clean != 'true'
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/staging_dir/toolchain-*
-            openwrt/build_dir/toolchain-*
-          key: prebuilt-toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.TOOLCHAIN_VERSION }}
-          restore-keys: |
-            prebuilt-toolchain-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
-            prebuilt-toolchain-${{ env.REPO_BRANCH }}-
-          
-      - name: 📦 Fetch Prebuilt Toolchain
-        id: fetch_toolchain
+      - name: Set TOOLCHAIN_VERSION
         run: |
-          TOOLCHAIN_VERSION=$(curl -s https://api.github.com/repos/openwrt/openwrt/releases/latest | jq -r .tag_name)
-          echo "toolchain_version=$TOOLCHAIN_VERSION" >> $GITHUB_ENV
-          TOOLCHAIN_RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/toolchain-${{ env.REPO_BRANCH }}/toolchain-x86_64-*.tar.gz"
+          TOOLCHAIN_VERSION=$(curl -s https://api.github.com/repos/openwrt/openwrt/releases/latest | \
+            grep -m1 '"tag_name"' | cut -d'"' -f4)
+          echo "TOOLCHAIN_VERSION=$TOOLCHAIN_VERSION" >> $GITHUB_ENV
+          
+      - name: 📥 Download Prebuilt Toolchain
+        if: github.event.inputs.force_clean != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$OPENWRT_PATH"
+          TARGET_KEY="${DEVICE_TARGET}-${DEVICE_SUBTARGET}"
+          TAG="toolchain-${REPO_BRANCH}"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/toolchain-${TARGET_KEY}-latest.tar.gz"
+    
           mkdir -p prebuilt_toolchain
-          if curl -sILf "$TOOLCHAIN_RELEASE_URL" >/dev/null 2>&1; then
-            echo "✅ Found prebuilt toolchain, downloading..."
-            curl -sL "$TOOLCHAIN_RELEASE_URL" -o prebuilt_toolchain/toolchain.tar.gz
-            echo "📦 Extracting prebuilt toolchain..."
+          if curl -sILf "$URL" >/dev/null 2>&1; then
+            echo "✅ Found prebuilt toolchain: $URL"
+            curl -sL "$URL" -o prebuilt_toolchain/toolchain.tar.gz
             tar -xzf prebuilt_toolchain/toolchain.tar.gz -C "$OPENWRT_PATH"
           else
-            echo "::warning::No prebuilt toolchain found, fallback to cache."
+            echo "::warning::No prebuilt toolchain for $TARGET_KEY"
           fi
 
       - name: 🧠 Skip Toolchain Rebuild Check
         run: |
           cd "$OPENWRT_PATH"
-          if [ -d "staging_dir/toolchain-*" ]; then
+          if compgen -G "staging_dir/toolchain-*"; then
             echo "✅ Prebuilt toolchain detected, skipping toolchain rebuild."
           else
             echo "⚠️ No prebuilt toolchain found, toolchain will build normally."
           fi
-      # ============================================
-      # 7. 简化的 Feeds 配置
-      # ============================================
+          
       - name: 📚 Configure Feeds
         run: |
           cd "$OPENWRT_PATH"
@@ -264,7 +259,6 @@ jobs:
           ccache -s 2>/dev/null || echo "ccache stats not available"
           echo "=========================="
       # 9. 自定义配置及插件开关
-      # ============================================
       - name: 🎨 Apply Custom Configuration
         env:
           LAN: ${{ github.event.inputs.lan_addr }}
@@ -327,6 +321,7 @@ jobs:
           echo "  Nikki: $ENABLE_NIKKI"
           echo "  Lucky: $ENABLE_LUCKY"
           echo "  OAF: $ENABLE_OAF"
+          
       # ============================================
       # 10. 强制清理
       # ============================================
