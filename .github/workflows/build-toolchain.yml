@@ -1,88 +1,250 @@
-name: 🔧 Build Toolchain (OpenWrt 24.10)
+name: 🔧 Build & Publish Toolchain (OpenWrt 24.10)
 on:
-  workflow_dispatch:
-    inputs:
-      targets:
-        description: "目标平台 (用逗号分隔)"
-        default: "x86_64"
-        required: true
-        type: string
-  schedule:
-    - cron: '0 2 * * 0'  # 每周日自动构建
+workflow_dispatch:
+inputs:
+targets:
+description: "目标平台 (逗号分隔，例如: x86_64,nanopi-r5s)"
+default: "x86_64"
+required: true
+type: string
+schedule:
+
+cron: '0 2 * * 0'
+
 env:
-  REPO_URL: https://github.com/openwrt/openwrt
-  REPO_BRANCH: openwrt-24.10
-  TZ: Asia/Shanghai
+REPO_URL: https://github.com/openwrt/openwrt
+REPO_BRANCH: openwrt-24.10
+TZ: Asia/Shanghai
 jobs:
-  build-toolchain:
-    name: 🔧 Build ${{ matrix.target }} Toolchain
+build-toolchain:
+name: 🔧 Build ${{ matrix.target }} Toolchain
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJson(format('["{0}"]', join(fromJson(format('["{0}"]', github.event.inputs.targets || 'x86_64')), '","'))) }}
-    
-    steps:
-      - name: 🔧 Setup Environment
-        run: |
-          sudo timedatectl set-timezone "$TZ"
-          echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
-          
-      - name: 🧹 Free Disk Space
-        uses: sbwml/actions@free-disk
-        
-      - name: 🛠️ Build System Setup
-        uses: sbwml/actions@openwrt-build-setup
-        
-      - name: 📦 Install LLVM
-        uses: sbwml/actions@install-llvm
-        
-      - name: 📥 Clone OpenWrt
-        run: |
-          git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-          cd openwrt
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          
-      - name: 📚 Configure Feeds
-        run: |
-          cd "$OPENWRT_PATH"
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-          
-      - name: ⚙️ Configure Target
-        run: |
-          cd "$OPENWRT_PATH"
-          case "${{ matrix.target }}" in
-            "x86_64")
-              echo "CONFIG_TARGET_x86=y" > .config
-              echo "CONFIG_TARGET_x86_64=y" >> .config
-              ;;
-            "nanopi-r5s")
-              echo "CONFIG_TARGET_rockchip=y" > .config
-              echo "CONFIG_TARGET_rockchip_armv8=y" >> .config
-              ;;
-            # 添加更多目标...
-          esac
-          make defconfig
-          
-      - name: 🔨 Build Toolchain
-        run: |
-          cd "$OPENWRT_PATH"
-          make -j$(nproc) tools/install
-          make -j$(nproc) toolchain/install
-          
-      - name: 📦 Package Toolchain
-        run: |
-          cd "$OPENWRT_PATH"
-          tar -czf "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz" \
-            staging_dir/toolchain-* build_dir/toolchain-*
-            
-      - name: 🚀 Upload Toolchain
-        uses: ncipollo/release-action@v1.14.0
-        with:
-          name: Toolchain-${{ env.REPO_BRANCH }}-${{ env.BUILD_DATE }}
-          allowUpdates: true
-          tag: toolchain-${{ env.REPO_BRANCH }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
+        target: ${{ fromJson('["' + replace(github.event.inputs.targets || 'x86_64', ',', '","') + '"]') }}
+steps:
+
+
+name: 🔧 Setup Environment
+run: |
+sudo timedatectl set-timezone "$TZ"
+  echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+  echo "MONTH_KEY=$(date +'%Y%m')" >> $GITHUB_ENV
+  echo "RELEASE_TAG=toolchain-$REPO_BRANCH" >> $GITHUB_ENV
+
+
+name: 🧹 Free Disk Space
+uses: sbwml/actions@free-disk
+
+
+name: 🛠️ Build System Setup
+uses: sbwml/actions@openwrt-build-setup
+
+
+name: 📦 Install LLVM
+uses: sbwml/actions@install-llvm
+
+
+name: 📥 Clone OpenWrt
+run: |
+git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+cd openwrt
+echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+
+name: ☁️ Cache Downloads
+uses: actions/cache@v4
+with:
+path: openwrt/dl
+key: downloads-${{ env.REPO_BRANCH }}-v8
+  restore-keys: |
+    downloads-${{ env.REPO_BRANCH }}-
+
+
+name: ☁️ Cache Feeds & Package Index
+uses: actions/cache@v4
+with:
+path: |
+openwrt/feeds
+openwrt/tmp/packagecache
+key: feeds-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-v3
+restore-keys: |
+feeds-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-
+feeds-${{ env.REPO_BRANCH }}-
+
+
+name: ☁️ Cache Toolchain (Source-based)
+id: cache_tc
+uses: actions/cache@v4
+with:
+path: |
+openwrt/staging_dir/toolchain-*
+openwrt/build_dir/toolchain-*
+key: toolchain-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-v9
+restore-keys: |
+toolchain-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-
+toolchain-${{ env.REPO_BRANCH }}-
+
+
+name: ☁️ Cache ccache
+uses: actions/cache@v4
+with:
+path: openwrt/.ccache
+key: ccache-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-v9
+restore-keys: |
+ccache-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-
+ccache-${{ env.REPO_BRANCH }}-
+
+
+name: 📚 Configure Feeds
+run: |
+cd "$OPENWRT_PATH"
+./scripts/feeds update -a
+./scripts/feeds install -a
+
+
+name: ⚙️ Configure Target
+run: |
+cd "$OPENWRT_PATH"
+  case "${{ matrix.target }}" in
+"x86_64")
+cat > .config <<EOF
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+EOF
+;;
+"nanopi-r5s")
+cat > .config <<EOF
+CONFIG_TARGET_rockchip=y
+CONFIG_TARGET_rockchip_armv8=y
+EOF
+;;
+*)
+echo "::error::未知目标: ${{ matrix.target }}"
+exit 1
+;;
+esac
+make defconfig
+
+
+name: 🔧 Setup ccache
+run: |
+cd "$OPENWRT_PATH"
+  export USE_CCACHE=1
+  export CCACHE_DIR="$PWD/.ccache"
+export CCACHE_BASEDIR="$PWD"
+  export PATH="/usr/lib/ccache:$PATH"
+mkdir -p "$CCACHE_DIR"
+ccache -M 20G
+ccache -F 200000
+ccache --set-config=compression=true
+ccache --set-config=stats=true
+ccache --set-config=max_files=200000
+ccache --set-config=hash_dir=false
+ccache --set-config=compiler_check=content
+ccache --set-config=sloppiness=file_macro,locale,time_macros,include_file_ctime,include_file_mtime
+ccache --set-config=unify=true
+ccache -s
+
+
+name: 🧰 Install GitHub CLI
+run: |
+sudo apt-get update
+sudo apt-get install -y gh
+
+
+name: 🔍 Check Existing Artifact
+id: check
+env:
+GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+run: |
+  ASSET_NAME="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
+  TAG="${{ env.RELEASE_TAG }}"
+if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "$ASSET_NAME"; then
+echo "skip=true" >> $GITHUB_OUTPUT
+    echo "✅ Found existing $ASSET_NAME in release. Skip building."
+else
+echo "skip=false" >> $GITHUB_OUTPUT
+    echo "ℹ️ $ASSET_NAME not found. Proceed to build."
+fi
+
+
+name: 🔨 Build Toolchain
+if: steps.check.outputs.skip == 'false'
+run: |
+cd "$OPENWRT_PATH"
+  export USE_CCACHE=1
+  export CCACHE_DIR="$PWD/.ccache"
+make -j$(nproc) tools/install
+  make -j$(nproc) toolchain/install
+
+
+name: 📦 Package Toolchain
+if: steps.check.outputs.skip == 'false'
+id: package
+run: |
+cd "$OPENWRT_PATH"
+  OUT="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
+  tar -czf "../$OUT" staging_dir/toolchain-* build_dir/toolchain-*
+echo "artifact_path=../$OUT" >> $GITHUB_OUTPUT
+echo "artifact_name=$OUT" >> $GITHUB_OUTPUT
+cat > "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.json" <<EOF
+{
+"branch": "${{ env.REPO_BRANCH }}",
+    "target": "${{ matrix.target }}",
+"source_hash": "${{ env.SOURCE_HASH }}",
+    "build_date": "${{ env.BUILD_DATE }}"
+}
+EOF
+
+
+name: 🚀 Upload Toolchain (hashed)
+if: steps.check.outputs.skip == 'false'
+uses: ncipollo/release-action@v1.14.0
+with:
+name: Toolchain • ${{ env.REPO_BRANCH }} • ${{ env.BUILD_DATE }}
+allowUpdates: true
+tag: ${{ env.RELEASE_TAG }}
+  token: ${{ secrets.GITHUB_TOKEN }}
+artifacts: |
+${{ steps.package.outputs.artifact_path }}
+    toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.json
+
+
+name: 🔁 Ensure 'latest' Alias
+env:
+GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+run: |
+  set -e
+  TAG="${{ env.RELEASE_TAG }}"
+HASHED="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
+LATEST="toolchain-${{ matrix.target }}-latest.tar.gz"
+if gh release view "TAG" >/dev/null 2>&1; then
+    if ! gh release view "TAG" --json assets --jq '.assets[].name' | grep -qx "$LATEST"; then
+      echo "Create latest alias for $HASHED"
+if [ -f "$HASHED" ]; then
+        cp "$HASHED" "$LATEST"
+      else
+        gh release download "$TAG" -p "$HASHED" -D .
+        cp "$HASHED" "$LATEST"
+      fi
+      gh release upload "$TAG" "$LATEST" --clobber
+      echo "✅ Uploaded '$LATEST'"
+else
+echo "✅ 'latest' already exists, skip."
+fi
+else
+echo "⚠️ Release tag not found: $TAG"
+fi
+
+
+name: 📊 Build Summary
+run: |
+echo "Target: ${{ matrix.target }}"
+  echo "Branch: ${{ env.REPO_BRANCH }}"
+echo "Source hash: ${{ env.SOURCE_HASH }}"
+  echo "Release tag: ${{ env.RELEASE_TAG }}"
+ls -lh .. | grep toolchain || true
+echo "Done."
