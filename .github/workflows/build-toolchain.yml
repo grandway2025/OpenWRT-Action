@@ -18,7 +18,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt
   REPO_BRANCH: openwrt-24.10
   TZ: Asia/Shanghai
-  CACHE_VERSION: v20250301
+  CACHE_VERSION: v2025-03-01
 
 jobs:
   build-toolchain:
@@ -27,10 +27,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJson('["' + replace(github.event.inputs.targets || 'x86_64', ',', '","') + '"]') }}
+        # 修复：使用 format + fromJson 生成矩阵数组（避免 + 连接导致的语法错误）
+        target: ${{ fromJson(format('["{0}"]', replace(github.event.inputs.targets || 'x86_64', ',', '","'))) }}
 
     steps:
-      - name: ✅ Checkout Repository
+      - name: ✅ Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -38,16 +39,9 @@ jobs:
       - name: 🔧 Setup Environment
         run: |
           sudo timedatectl set-timezone "$TZ"
-          BUILD_DATE=$(date +'%Y.%m.%d')
-          MONTH_KEY=$(date +'%Y%m')
-          TARGET_KEY="${{ matrix.target }}"
-          {
-            echo "BUILD_DATE=$BUILD_DATE"
-            echo "MONTH_KEY=$MONTH_KEY"
-            echo "TARGET_KEY=$TARGET_KEY"
-            echo "RELEASE_TAG=toolchain-$REPO_BRANCH"
-            echo "CCACHE_KEY=toolchain-ccache-${CACHE_VERSION}-${REPO_BRANCH}-${TARGET_KEY}"
-          } >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+          echo "MONTH_KEY=$(date +'%Y%m')" >> $GITHUB_ENV
+          echo "RELEASE_TAG=toolchain-$REPO_BRANCH" >> $GITHUB_ENV
 
       - name: 🧹 Free Disk Space
         uses: sbwml/actions@free-disk
@@ -71,12 +65,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-v1
+          key: downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-v1
           restore-keys: |
-            downloads-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             downloads-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Feeds & Package Index
+      - name: ☁️ Cache Feeds & Index (monthly)
         uses: actions/cache@v4
         with:
           path: |
@@ -87,33 +80,32 @@ jobs:
             feeds-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             feeds-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Toolchain (source hash)
+      - name: ☁️ Cache Toolchain (source-based)
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-${{ env.TARGET_KEY }}-v1
+          key: toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.SOURCE_HASH }}-${{ matrix.target }}-v1
           restore-keys: |
-            toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-
+            toolchain-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ matrix.target }}-
             toolchain-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache Build Host
+      - name: ☁️ Cache Build Host (monthly)
         uses: actions/cache@v4
         with:
           path: openwrt/build_dir/host*
-          key: host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.TARGET_KEY }}-v1
+          key: host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-${{ env.MONTH_KEY }}-v1
           restore-keys: |
             host-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             host-${{ env.REPO_BRANCH }}-
 
-      - name: ☁️ Cache ccache
+      - name: ☁️ Cache ccache (shared per branch)
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ${{ env.CCACHE_KEY }}-v1
+          key: toolchain-ccache-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-v1
           restore-keys: |
-            toolchain-ccache-${{ env.CACHE_VERSION }}-${{ env.REPO_BRANCH }}-
             toolchain-ccache-${{ env.REPO_BRANCH }}-
 
       - name: 📚 Configure Feeds
@@ -144,18 +136,17 @@ jobs:
               ;;
           esac
           make defconfig
-          CONFIG_DIGEST=$(sha256sum .config | cut -c1-12)
-          echo "CONFIG_DIGEST=$CONFIG_DIGEST" >> $GITHUB_ENV
 
       - name: 🔧 Setup ccache
         run: |
           cd "$OPENWRT_PATH"
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
+          export CCACHE_BASEDIR="$PWD"
           export PATH="/usr/lib/ccache:$PATH"
           mkdir -p "$CCACHE_DIR"
-          ccache --set-config=max_size=10G
-          ccache --set-config=max_files=200000
+          ccache --set-config=max_size=15G
+          ccache --set-config=max_files=250000
           ccache --set-config=compression=true
           ccache --set-config=compiler_check=content
           ccache --set-config=hash_dir=false
@@ -166,7 +157,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: 🔍 Check Existing Artifact
+      - name: 🔍 Skip If Already Published
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,10 +166,9 @@ jobs:
           ASSET="toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
           if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "$ASSET"; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "✅ Found $ASSET, skipping build."
+            echo "✅ Found existing $ASSET. Skip build."
           else
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ $ASSET not found, building."
           fi
 
       - name: 🔨 Build Toolchain
@@ -203,7 +193,6 @@ jobs:
             "branch": "${{ env.REPO_BRANCH }}",
             "target": "${{ matrix.target }}",
             "source_hash": "${{ env.SOURCE_HASH }}",
-            "config_digest": "${{ env.CONFIG_DIGEST }}",
             "build_date": "${{ env.BUILD_DATE }}"
           }
           EOF
@@ -229,16 +218,14 @@ jobs:
           LATEST="toolchain-${{ matrix.target }}-latest.tar.gz"
           if gh release view "$TAG" >/dev/null 2>&1; then
             if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "$LATEST"; then
-              if [ ! -f "$HASHED" ]; then
-                gh release download "$TAG" -p "$HASHED" -D .
-              fi
+              [ -f "$HASHED" ] || gh release download "$TAG" -p "$HASHED" -D .
               cp "$HASHED" "$LATEST"
               gh release upload "$TAG" "$LATEST" --clobber
             else
-              echo "Latest alias already present."
+              echo "latest exists, skip."
             fi
           else
-            echo "::warning::Release tag $TAG not found."
+            echo "::warning::release $TAG not found"
           fi
 
       - name: 📊 Build Summary
@@ -246,6 +233,4 @@ jobs:
           echo "Target: ${{ matrix.target }}"
           echo "Branch: ${{ env.REPO_BRANCH }}"
           echo "Source hash: ${{ env.SOURCE_HASH }}"
-          echo "Config digest: ${{ env.CONFIG_DIGEST }}"
-          echo "Release tag: ${{ env.RELEASE_TAG }}"
           ls -lh .. | grep toolchain || true
