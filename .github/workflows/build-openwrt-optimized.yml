@@ -199,9 +199,9 @@ jobs:
             curl -sL "$URL" -o prebuilt_toolchain/toolchain.tar.gz
             tar -xzf prebuilt_toolchain/toolchain.tar.gz -C "$OPENWRT_PATH"
           else
-            echo "::warning::No prebuilt toolchain for $TARGET_KEY"
+            echo "::warning::No prebuilt toolchain for $TARGET_KEY, using source build"
+            make toolchain
           fi
-
       - name: 🧠 Skip Toolchain Rebuild Check
         run: |
           cd "$OPENWRT_PATH"
@@ -210,6 +210,12 @@ jobs:
           else
             echo "⚠️ No prebuilt toolchain found, toolchain will build normally."
           fi
+      - name: Upload Toolchain (hashed)
+        if: success() && fileExists('staging_dir/toolchain-*/toolchain.tar.gz')
+        uses: actions/upload-artifact@v2
+        with:
+          name: toolchain-${{ env.TOOLCHAIN_VERSION }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+          path: ${{ github.workspace }}/openwrt/staging_dir/toolchain-*/toolchain.tar.gz
           
       - name: 📚 Configure Feeds
         run: |
