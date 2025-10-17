@@ -184,15 +184,16 @@ jobs:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: prebuilt-toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-${{ env.PLUGINS_HASH }}-v7
+          key: prebuilt-toolchain-${{ env.REPO_BRANCH }}-${{ env.WEEK_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.TOOLCHAIN_VERSION }}
           restore-keys: |
             prebuilt-toolchain-${{ env.REPO_BRANCH }}-${{ env.PLUGINS_HASH }}-
             prebuilt-toolchain-${{ env.REPO_BRANCH }}-
-
+          
       - name: 📦 Fetch Prebuilt Toolchain
+        id: fetch_toolchain
         run: |
-          cd "$OPENWRT_PATH"
-          echo "🔍 Checking for prebuilt toolchain..."
+          TOOLCHAIN_VERSION=$(curl -s https://api.github.com/repos/openwrt/openwrt/releases/latest | jq -r .tag_name)
+          echo "toolchain_version=$TOOLCHAIN_VERSION" >> $GITHUB_ENV
           TOOLCHAIN_RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/toolchain-${{ env.REPO_BRANCH }}/toolchain-x86_64-*.tar.gz"
           mkdir -p prebuilt_toolchain
           if curl -sILf "$TOOLCHAIN_RELEASE_URL" >/dev/null 2>&1; then
@@ -421,35 +422,6 @@ jobs:
           ccache -s || echo "ccache stats not available"
           echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
           echo "========================="
-      - name: 📊 Cache Statistics
-        if: always()
-        run: |
-          cd "$OPENWRT_PATH"
-          echo "=== Cache Effectiveness Report ==="
-          echo "Date: $(date)"
-          echo "Branch: ${{ env.REPO_BRANCH }}"
-          echo "Plugins Hash: ${{ env.PLUGINS_HASH }}"
-          echo "Week Key: ${{ env.WEEK_KEY }}"
-          echo ""
-          
-          echo "📁 Directory Sizes:"
-          du -sh dl/ 2>/dev/null || echo "dl/: Not found"
-          du -sh .ccache/ 2>/dev/null || echo ".ccache/: Not found"
-          du -sh staging_dir/ 2>/dev/null || echo "staging_dir/: Not found"
-          du -sh build_dir/toolchain-* 2>/dev/null || echo "toolchain build_dir/: Not found"
-          echo ""
-          
-          echo "🎯 ccache Statistics:"
-          if command -v ccache >/dev/null 2>&1; then
-            export CCACHE_DIR="$PWD/.ccache"
-            ccache -s
-            echo ""
-            echo "📈 Cache Hit Rate:"
-            ccache -s | grep -E "(cache hit|cache miss|files in cache)" || echo "Stats not available"
-          else
-            echo "ccache not available"
-          fi
-          echo "================================="
       # ============================================
       # 13. 整理固件文件
       # ============================================
