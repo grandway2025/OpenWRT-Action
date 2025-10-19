@@ -392,7 +392,17 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           echo "📥 Starting optimized package download..."
-          make download -j"$COMPILE_JOBS" V=s
+          
+          # 提升下载并行度
+          DOWNLOAD_JOBS=$((COMPILE_JOBS < 16 ? COMPILE_JOBS * 2 : 16))
+          
+          # 使用 aria2 加速下载（如果可用）
+          if command -v aria2c >/dev/null 2>&1; then
+            echo "🚀 Using aria2 for faster downloads"
+            make download -j"$DOWNLOAD_JOBS" DOWNLOAD_TOOL="aria2c -x 4 -s 4" 2>&1 | tee download.log
+          else
+            make download -j"$DOWNLOAD_JOBS" 2>&1 | tee download.log
+          fi
 
       # ============================================
       # 12. 编译固件
