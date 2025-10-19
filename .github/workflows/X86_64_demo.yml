@@ -70,7 +70,7 @@ concurrency:
 jobs:
   build:
     name: 🏗️ Build OpenWrt
-    runs-on: ubuntu-22.04 # 使用稳定的LTS版本
+    runs-on: ubuntu-24.04 
     timeout-minutes: 720
     outputs:
       firmware_path: ${{ steps.organize.outputs.firmware_path }}
