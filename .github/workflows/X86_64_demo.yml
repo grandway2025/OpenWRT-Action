@@ -600,17 +600,12 @@ jobs:
           done
           echo ""
           
-          echo "🎯 ccache Performance:"
+          echo "🎯 ccache Statistics:"
           if command -v ccache >/dev/null 2>&1; then
             export CCACHE_DIR="$PWD/.ccache"
-            ccache -s 2>/dev/null | grep -E "(cache hit|cache miss|^Hits:|^Misses:|^Hit rate:|files in cache)"
-            
-            # 计算命中率
-            hits=$(ccache -s 2>/dev/null | grep "cache hit" | awk '{print $5}' | tr -d '()')
-            if [ -n "$hits" ]; then
-              echo ""
-              echo "📈 Cache Hit Rate: $hits"
-            fi
+            ccache -s
+          else
+            echo "ccache not available"
           fi
           echo "================================="
       
