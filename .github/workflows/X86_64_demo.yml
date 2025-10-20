@@ -511,9 +511,9 @@ jobs:
           echo "📊 Download complete: $(ls dl | wc -l) files, $(du -sh dl | cut -f1) total"
       
       # ============================================
-      # 12. 编译固件 - 智能编译策略
+      # 12. 编译固件
       # ============================================
-      - name: 🔨 Compile Firmware (Smart Strategy)
+      - name: 🔨 Compile Firmware
         id: compile
         timeout-minutes: 600
         run: |
@@ -523,24 +523,24 @@ jobs:
           export USE_CCACHE=1
           export CCACHE_DIR="$PWD/.ccache"
           export PATH="/usr/lib/ccache:$PATH"
-          export CCACHE_BASEDIR="$PWD"
-          
+
           # 🔥 额外的编译优化
           export FORCE_UNSAFE_CONFIGURE=1
           export CONFIG_CCACHE=y
           
           echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
-          echo "=== Pre-compile ccache stats ==="
-          ccache -s 2>/dev/null | head -15
-          echo "=================================="
+          echo "=== ccache initial stats ==="
+          ccache -s
+          echo "CCACHE_DIR: $CCACHE_DIR"
+          echo "PATH: $PATH"
+          echo "=========================="
           
           compile_with_jobs() {
             local jobs=$1
             local log_file="compile_j${jobs}.log"
             echo "🔧 Compiling with $jobs jobs..."
             
-            # 使用更详细的输出以便调试
-            if timeout 500m make -j"$jobs" V=w 2>&1 | tee "$log_file"; then
+            if timeout 500m make -j"$jobs" 2>&1 | tee "$log_file"; then
               echo "✅ Compilation successful with $jobs jobs"
               return 0
             else
@@ -549,29 +549,28 @@ jobs:
             fi
           }
           
-          # 智能编译策略
+          # 尝试编译（逐步降低并行度）
           if compile_with_jobs "$COMPILE_JOBS"; then
             echo "status=success" >> $GITHUB_OUTPUT
-          elif [ "$COMPILE_JOBS" -gt 4 ]; then
-            echo "⚠️ Retrying with reduced parallelism..."
-            if compile_with_jobs $((COMPILE_JOBS/2)); then
-              echo "status=success" >> $GITHUB_OUTPUT
-            elif compile_with_jobs 2; then
-              echo "status=success" >> $GITHUB_OUTPUT
-            elif compile_with_jobs 1; then
-              echo "status=success" >> $GITHUB_OUTPUT
-            else
-              echo "❌ All compilation attempts failed"
-              exit 1
-            fi
+          elif [ "$COMPILE_JOBS" -gt 2 ] && compile_with_jobs $((COMPILE_JOBS/2)); then
+            echo "status=success" >> $GITHUB_OUTPUT
+          elif [ "$COMPILE_JOBS" -gt 1 ] && compile_with_jobs 1; then
+            echo "status=success" >> $GITHUB_OUTPUT
           else
-            echo "❌ Compilation failed"
+            echo "❌ All compilation attempts failed"
+            echo "=== Build Error Analysis ==="
+            if [ -f "compile_j1.log" ]; then
+              echo "Last 100 lines of single-threaded build:"
+              tail -n 100 compile_j1.log
+            fi
+            echo "=== Recent package logs ==="
+            find logs -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
             exit 1
           fi
           
-          echo "=== Post-compile ccache stats ==="
-          ccache -s 2>/dev/null || echo "Stats unavailable"
-          echo "=================================="
+          echo "=== ccache final stats ==="
+          ccache -s || echo "ccache stats not available"
+          echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
       
       # 🔥 新增：详细的缓存统计
       - name: 📊 Detailed Cache Statistics
