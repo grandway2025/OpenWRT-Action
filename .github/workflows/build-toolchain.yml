@@ -1,88 +1,232 @@
-name: 🔧 Build Toolchain (OpenWrt 24.10)
+name: 🔧 Build Toolchain
+
 on:
+  # 手动触发
   workflow_dispatch:
     inputs:
-      targets:
-        description: "目标平台 (用逗号分隔)"
-        default: "x86_64"
+      openwrt_version:
+        description: 'OpenWrt Version'
         required: true
+        default: 'openwrt-23.05'
+        type: choice
+        options:
+          - openwrt-23.05
+          - master
+      target:
+        description: 'Target Platform'
+        required: true
+        default: 'x86/64'
         type: string
+  
+  # 每周日自动构建
   schedule:
-    - cron: '0 2 * * 0'  # 每周日自动构建
+    - cron: '0 2 * * 0'  # 每周日 02:00 UTC
+  
+  # feeds 更新时触发
+  repository_dispatch:
+    types: [feeds-updated]
+
 env:
-  REPO_URL: https://github.com/openwrt/openwrt
-  REPO_BRANCH: openwrt-24.10
+  OPENWRT_VERSION: ${{ github.event.inputs.openwrt_version || 'openwrt-23.05' }}
+  TARGET_PLATFORM: ${{ github.event.inputs.target || 'x86/64' }}
+  TOOLCHAIN_DIR: /workdir/toolchain
   TZ: Asia/Shanghai
+
 jobs:
   build-toolchain:
-    name: 🔧 Build ${{ matrix.target }} Toolchain
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        target: ${{ fromJson(format('["{0}"]', join(fromJson(format('["{0}"]', github.event.inputs.targets || 'x86_64')), '","'))) }}
+    runs-on: ubuntu-22.04
     
     steps:
-      - name: 🔧 Setup Environment
+      # ============================================
+      # 1. 检出代码
+      # ============================================
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # ============================================
+      # 2. 初始化环境
+      # ============================================
+      - name: 🔧 Initialize Environment
         run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses5-dev \
+            libssl-dev python3-distutils rsync unzip zlib1g-dev \
+            file wget ccache
+          
           sudo timedatectl set-timezone "$TZ"
-          echo "BUILD_DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
           
-      - name: 🧹 Free Disk Space
-        uses: sbwml/actions@free-disk
-        
-      - name: 🛠️ Build System Setup
-        uses: sbwml/actions@openwrt-build-setup
-        
-      - name: 📦 Install LLVM
-        uses: sbwml/actions@install-llvm
-        
-      - name: 📥 Clone OpenWrt
+          # 创建工作目录
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+
+      # ============================================
+      # 3. 克隆 OpenWrt 源码
+      # ============================================
+      - name: 📦 Clone OpenWrt Source
+        working-directory: /workdir
         run: |
-          git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-          cd openwrt
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          git clone --depth 1 --branch $OPENWRT_VERSION \
+            https://github.com/openwrt/openwrt.git openwrt
           
-      - name: 📚 Configure Feeds
+          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+      # ============================================
+      # 4. 更新 Feeds
+      # ============================================
+      - name: 🔄 Update Feeds
+        working-directory: /workdir/openwrt
         run: |
-          cd "$OPENWRT_PATH"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          
-      - name: ⚙️ Configure Target
+
+      # ============================================
+      # 5. 生成工具链配置
+      # ============================================
+      - name: ⚙️ Generate Toolchain Config
+        working-directory: /workdir/openwrt
         run: |
-          cd "$OPENWRT_PATH"
-          case "${{ matrix.target }}" in
-            "x86_64")
-              echo "CONFIG_TARGET_x86=y" > .config
-              echo "CONFIG_TARGET_x86_64=y" >> .config
-              ;;
-            "nanopi-r5s")
-              echo "CONFIG_TARGET_rockchip=y" > .config
-              echo "CONFIG_TARGET_rockchip_armv8=y" >> .config
-              ;;
-            # 添加更多目标...
-          esac
+          # 解析目标平台
+          TARGET=$(echo $TARGET_PLATFORM | cut -d'/' -f1)
+          SUBTARGET=$(echo $TARGET_PLATFORM | cut -d'/' -f2)
+          
+          # 生成最小配置
+          cat > .config <<EOF
+          CONFIG_TARGET_${TARGET}=y
+          CONFIG_TARGET_${TARGET}_${SUBTARGET}=y
+          CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_generic=y
+          
+          # 工具链选项
+          CONFIG_DEVEL=y
+          CONFIG_TOOLCHAINOPTS=y
+          CONFIG_CCACHE=y
+          
+          # 禁用不必要的功能
+          # CONFIG_PACKAGE_luci is not set
+          # CONFIG_PACKAGE_dnsmasq is not set
+          EOF
+          
+          # 展开配置
           make defconfig
           
+          echo "📋 Toolchain configuration:"
+          grep "^CONFIG_TARGET" .config
+
+      # ============================================
+      # 6. 下载依赖
+      # ============================================
+      - name: 📥 Download Dependencies
+        working-directory: /workdir/openwrt
+        run: |
+          make download -j$(nproc) V=s
+
+      # ============================================
+      # 7. 编译工具链
+      # ============================================
       - name: 🔨 Build Toolchain
+        working-directory: /workdir/openwrt
         run: |
-          cd "$OPENWRT_PATH"
-          make -j$(nproc) tools/install
-          make -j$(nproc) toolchain/install
+          echo "🔨 Building toolchain..."
+          echo "⏰ Start time: $(date '+%Y-%m-%d %H:%M:%S')"
           
+          START_TIME=$(date +%s)
+          
+          # 只编译工具链
+          make tools/install -j$(nproc) V=s
+          make toolchain/install -j$(nproc) V=s
+          
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          
+          echo ""
+          echo "✅ Toolchain build completed!"
+          echo "⏱️  Duration: $((DURATION/60))m $((DURATION%60))s"
+
+      # ============================================
+      # 8. 打包工具链
+      # ============================================
       - name: 📦 Package Toolchain
+        working-directory: /workdir/openwrt
         run: |
-          cd "$OPENWRT_PATH"
-          tar -czf "../toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz" \
-            staging_dir/toolchain-* build_dir/toolchain-*
-            
-      - name: 🚀 Upload Toolchain
-        uses: ncipollo/release-action@v1.14.0
+          echo "📦 Packaging toolchain..."
+          
+          # 创建工具链目录
+          mkdir -p $TOOLCHAIN_DIR
+          
+          # 复制必要文件
+          cp -r staging_dir $TOOLCHAIN_DIR/
+          cp -r build_dir/toolchain-* $TOOLCHAIN_DIR/ 2>/dev/null || true
+          cp -r build_dir/host $TOOLCHAIN_DIR/ 2>/dev/null || true
+          cp .config $TOOLCHAIN_DIR/
+          
+          # 打包
+          cd /workdir
+          tar -czf toolchain-${OPENWRT_VERSION}-${TARGET_PLATFORM//\//-}.tar.gz toolchain/
+          
+          # 显示信息
+          echo ""
+          echo "📊 Toolchain package info:"
+          ls -lh toolchain-*.tar.gz
+          echo ""
+          echo "📁 Package size: $(du -sh toolchain-*.tar.gz | cut -f1)"
+
+      # ============================================
+      # 9. 上传工具链
+      # ============================================
+      - name: 📤 Upload Toolchain Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: Toolchain-${{ env.REPO_BRANCH }}-${{ env.BUILD_DATE }}
-          allowUpdates: true
-          tag: toolchain-${{ env.REPO_BRANCH }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "toolchain-${{ matrix.target }}-${{ env.SOURCE_HASH }}.tar.gz"
+          name: toolchain-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_PLATFORM }}
+          path: /workdir/toolchain-*.tar.gz
+          retention-days: 30
+          compression-level: 0  # 已经压缩过了
+
+      # ============================================
+      # 10. 生成工具链信息
+      # ============================================
+      - name: 📋 Generate Toolchain Info
+        working-directory: /workdir/openwrt
+        run: |
+          cat > $TOOLCHAIN_DIR/toolchain-info.txt <<EOF
+          ╔════════════════════════════════════════════╗
+          ║         Toolchain Information              ║
+          ╚════════════════════════════════════════════╝
+          
+          OpenWrt Version: $OPENWRT_VERSION
+          Target Platform: $TARGET_PLATFORM
+          Build Date: $(date '+%Y-%m-%d %H:%M:%S')
+          Build Host: $(uname -a)
+          
+          GCC Version: $(staging_dir/toolchain-*/bin/*-gcc --version | head -1)
+          Binutils Version: $(staging_dir/toolchain-*/bin/*-ld --version | head -1)
+          
+          Package Size: $(du -sh /workdir/toolchain-*.tar.gz | cut -f1)
+          
+          ═══════════════════════════════════════════════
+          EOF
+          
+          cat $TOOLCHAIN_DIR/toolchain-info.txt
+
+      # ============================================
+      # 11. 创建 Release（可选）
+      # ============================================
+      - name: 🚀 Create Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: toolchain-${{ env.OPENWRT_VERSION }}-${{ github.run_number }}
+          name: Toolchain ${{ env.OPENWRT_VERSION }} - ${{ env.TARGET_PLATFORM }}
+          body: |
+            ## 🔧 预编译工具链
+            
+            - **OpenWrt 版本**: ${{ env.OPENWRT_VERSION }}
+            - **目标平台**: ${{ env.TARGET_PLATFORM }}
+            - **构建时间**: ${{ github.event.head_commit.timestamp }}
+            
+            ### 使用方法
+            ```yaml
+            - name: Download Toolchain
+              uses: actions/download-artifact@v4
+              with:
+                name: toolchain-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_PLATFORM }}
