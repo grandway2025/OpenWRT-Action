@@ -523,13 +523,6 @@ jobs:
           echo "=== ccache initial stats ==="
           ccache -s | head -10
           
-          # 🔥 使用数组简化重试逻辑
-          RETRY_JOBS=("$COMPILE_JOBS" "$((COMPILE_JOBS/2))" "1")
-          
-          for jobs in "${RETRY_JOBS[@]}"; do
-            [ "$jobs" -lt 1 ] && continue
-            
-            log_file="compile_j${jobs}.log"
             echo "🔧 Compiling with $jobs jobs..."
             make -j$(nproc) || make -j1 || make -j1 V=s
               echo "✅ Compilation successful with $jobs jobs"
@@ -541,21 +534,7 @@ jobs:
               echo "Cache directory size: $(du -sh .ccache 2>/dev/null | cut -f1)"
               exit 0
             fi
-            
-            echo "⚠️  Failed with $jobs jobs, trying next strategy..."
-          done
-          
-          # 所有尝试失败
-          echo "❌ All compilation attempts failed"
-          echo "=== Build Error Analysis ==="
-          if [ -f "compile_j1.log" ]; then
-            echo "Last 100 lines of single-threaded build:"
-            tail -n 100 compile_j1.log
-          fi
-          echo "=== Recent package logs ==="
-          find logs -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -n 30 {} \; 2>/dev/null | head -500
-          exit 1
-      
+ 
       # ============================================
       # 13. 📊 构建报告（合并统计步骤）
       # ============================================
