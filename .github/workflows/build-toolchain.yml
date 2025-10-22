@@ -27,7 +27,7 @@ on:
     types: [feeds-updated]
 
 env:
-  OPENWRT_VERSION: ${{ github.event.inputs.openwrt_version || 'openwrt-23.05' }}
+  OPENWRT_VERSION: ${{ github.event.inputs.openwrt_version || 'openwrt-24.10' }}
   TARGET_PLATFORM: ${{ github.event.inputs.target || 'x86/64' }}
   TOOLCHAIN_DIR: /workdir/toolchain
   TZ: Asia/Shanghai
@@ -46,14 +46,8 @@ jobs:
       # ============================================
       # 2. 初始化环境
       # ============================================
-      - name: 🔧 Initialize Environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential clang flex bison g++ gawk \
-            gcc-multilib g++-multilib gettext git libncurses5-dev \
-            libssl-dev python3-distutils rsync unzip zlib1g-dev \
-            file wget ccache
+      - name: 🛠️ Build System Setup
+        uses: sbwml/actions@openwrt-build-setup
           
           sudo timedatectl set-timezone "$TZ"
           
