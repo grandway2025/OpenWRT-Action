@@ -531,8 +531,7 @@ jobs:
             
             log_file="compile_j${jobs}.log"
             echo "🔧 Compiling with $jobs jobs..."
-            
-            if timeout 500m make -j"$jobs" V=sc 2>&1 | tee "$log_file"; then
+            make -j$(nproc) || make -j1 || make -j1 V=s
               echo "✅ Compilation successful with $jobs jobs"
               echo "status=success" >> $GITHUB_OUTPUT
               
