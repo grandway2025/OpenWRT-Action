@@ -510,7 +510,7 @@ jobs:
           echo "📊 Downloads: $(find dl -type f 2>/dev/null | wc -l) files ($(du -sh dl 2>/dev/null | cut -f1))"
       
       # ============================================
-      # 12. 编译固件（优化版 - 简化重试逻辑）
+      # 12. 编译固件（优化版 - 简化）
       # ============================================
       - name: 🔨 Compile Firmware
         id: compile
@@ -518,23 +518,23 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 环境变量已在步骤8配置，无需重复导出
-          echo "🔨 Starting compilation with $COMPILE_JOBS jobs..."
-          echo "=== ccache initial stats ==="
-          ccache -s | head -10
+          echo "🔨 Compiling..."
+          ccache -s | head -5
           
-            echo "🔧 Compiling with $jobs jobs..."
-            make -j$(nproc) || make -j1 || make -j1 V=s
-              echo "✅ Compilation successful with $jobs jobs"
-              echo "status=success" >> $GITHUB_OUTPUT
-              
-              # 🔥 成功后立即输出统计
-              echo "=== ccache final stats ==="
-              ccache -s | grep -E '(cache size|Hits|Misses|Hit rate)'
-              echo "Cache directory size: $(du -sh .ccache 2>/dev/null | cut -f1)"
-              exit 0
-            fi
- 
+          make -j$(nproc) || make -j1 V=s || exit 1
+          
+          echo ""
+          echo "✅ Success"
+          echo "status=success" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📊 ccache stats:"
+          ccache -s | awk '
+            /cache size/ {print "💾 " $0}
+            /Hits:/ && !seen {print "🎯 " $0; seen=1}
+            /Misses:/ && !seen2 {print "❌ " $0; seen2=1}
+            /Hit rate/ {print "📈 " $0}
+          '
       # ============================================
       # 13. 📊 构建报告（合并统计步骤）
       # ============================================
