@@ -7,10 +7,10 @@ on:
       openwrt_version:
         description: 'OpenWrt Version'
         required: true
-        default: 'openwrt-23.05'
+        default: 'openwrt-24.10'
         type: choice
         options:
-          - openwrt-23.05
+          - openwrt-24.10
           - master
       target:
         description: 'Target Platform'
@@ -34,7 +34,7 @@ env:
 
 jobs:
   build-toolchain:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     
     steps:
       # ============================================
