@@ -49,11 +49,9 @@ jobs:
       - name: 🛠️ Build System Setup
         uses: sbwml/actions@openwrt-build-setup
           
-          sudo timedatectl set-timezone "$TZ"
-          
-          # 创建工作目录
-          sudo mkdir -p /workdir
-          sudo chown $USER:$GROUPS /workdir
+        # 创建工作目录
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
 
       # ============================================
       # 3. 克隆 OpenWrt 源码
