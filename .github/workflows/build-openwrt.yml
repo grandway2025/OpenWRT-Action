@@ -1,7 +1,7 @@
 #=================================================
 # 优化版：保持缓存76%+命中率+集成预编译工具链 + 7层缓存策略
 # Author: P3TERX (Optimized with Prebuilt Toolchain)
-# Version: v12-toolchain-enhanced
+# Version: v12-toolchain-enhanced-fixed
 #=================================================
 name: 💻 Build OpenWrt (x86_64)
 
@@ -50,10 +50,6 @@ on:
         description: "🛡️ OpenAppFilter"
         type: boolean
         default: true
-      force_clean:
-        description: "🧹 强制清理缓存"
-        type: boolean
-        default: false
       use_prebuilt_toolchain:
         description: "🔧 使用预编译工具链"
         type: boolean
@@ -557,7 +553,7 @@ jobs:
           fi
           
           # 执行额外脚本（错误不中断）
-          "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL" 2>/dev/null || true
+          "${{ github.workspace }}/scripts/preset-mihomo-core.sh" "$CLASH_KERNEL" 2>/dev/null || true
           "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL" 2>/dev/null || true
           
           # 生成配置
@@ -579,9 +575,12 @@ jobs:
           echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
           
           # 显示配置信息
+          TOOLCHAIN_STATUS="Will build from source"
+          [ "${{ env.TOOLCHAIN_READY }}" == "true" ] && TOOLCHAIN_STATUS="Prebuilt"
+          
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
           echo "📌 Latest Release: $LATEST_RELEASE"
-          echo "🔧 Toolchain: ${{ env.TOOLCHAIN_READY == 'true' && 'Prebuilt' || 'Will build from source' }}"
+          echo "🔧 Toolchain: $TOOLCHAIN_STATUS"
           
           echo "📦 Plugin Status:"
           echo "  Docker: $ENABLE_DOCKER | SSRP: $ENABLE_SSRP | Passwall: $ENABLE_PASSWALL"
@@ -913,3 +912,4 @@ jobs:
             # 3. 同步并弹出
             sync
             sudo eject /dev/sdX
+
