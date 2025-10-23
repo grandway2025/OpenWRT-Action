@@ -519,7 +519,8 @@ jobs:
           cd "$OPENWRT_PATH"
           
           echo "🔨 Compiling..."
-          ccache -s | head -5
+          echo "=== ccache initial stats ==="
+          ccache -s
           
           make -j$(nproc) || make -j1 V=s || exit 1
           
@@ -529,57 +530,47 @@ jobs:
           
           echo ""
           echo "📊 ccache stats:"
-          ccache -s | awk '
-            /cache size/ {print "💾 " $0}
-            /Hits:/ && !seen {print "🎯 " $0; seen=1}
-            /Misses:/ && !seen2 {print "❌ " $0; seen2=1}
-            /Hit rate/ {print "📈 " $0}
-          '
+          echo "=== ccache final stats ==="
+          ccache -s || echo "ccache stats not available"
+          echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
+   
       # ============================================
       # 13. 📊 构建报告（合并统计步骤）
       # ============================================
-      - name: 📊 Build Summary
+      - name: 📊 Cache Statistics
         if: always()
         run: |
-          cd "$OPENWRT_PATH" || exit 0
+          cd "$OPENWRT_PATH"
+          echo "=== 🎯 Cache Effectiveness Report ==="
+          echo "Build Time: $(date)"
+          echo "Build ID: ${{ env.BUILD_ID }}"
+          echo ""
           
-          cat <<EOF
-          ╔════════════════════════════════════════════╗
-          ║       🎯 Build Report [${{ env.BUILD_ID }}]       ║
-          ╚════════════════════════════════════════════╝
+          echo "📋 Cache Keys:"
+          echo "  Source: ${{ env.SOURCE_KEY }}"
+          echo "  Month: ${{ env.MONTH_KEY }}"
+          echo "  Week: ${{ env.WEEK_KEY }}"
+          echo "  Plugins: ${{ env.PLUGINS_HASH }}"
+          echo ""
           
-          📅 Build Time: ${{ env.BUILD_DATE }}
-          🎯 Target: ${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}
-          🔑 Build ID: ${{ env.BUILD_ID }}
+          echo "📁 Directory Sizes:"
+          for dir in dl .ccache staging_dir build_dir feeds; do
+            if [ -d "$dir" ]; then
+              size=$(du -sh "$dir" 2>/dev/null | cut -f1)
+              files=$(find "$dir" -type f 2>/dev/null | wc -l)
+              echo "  $dir: $size ($files files)"
+            fi
+          done
+          echo ""
           
-          📋 Cache Keys:
-            • Source: ${{ env.SOURCE_KEY }}
-            • Month: ${{ env.MONTH_KEY }}
-            • Week: ${{ env.WEEK_KEY }}
-            • Plugins: ${{ env.PLUGINS_HASH }}
-          
-          📁 Directory Sizes:
-          $(for dir in dl .ccache staging_dir build_dir feeds; do
-            [ -d "$dir" ] && echo "    • $dir: $(du -sh "$dir" 2>/dev/null | cut -f1)"
-          done)
-          
-          🎯 ccache Performance:
-          $(if [ -d ".ccache" ]; then
-            ccache -s 2>/dev/null | awk '
-              /cache size/ {size=$0}
-              /Hits:/ && !seen_hits {hits=$0; seen_hits=1}
-              /Misses:/ && !seen_misses {misses=$0; seen_misses=1}
-              /Hit rate/ {rate=$0}
-              END {
-                print "    " size
-                print "    " hits
-                print "    " misses
-                print "    " rate
-              }
-            '
+          echo "🎯 ccache Statistics:"
+          if command -v ccache >/dev/null 2>&1; then
+            export CCACHE_DIR="$PWD/.ccache"
+            ccache -s
           else
-            echo "    N/A"
-          fi)     
+            echo "ccache not available"
+          fi
+          echo "================================="    
       # ============================================
       # 14. 整理固件文件
       # ============================================
