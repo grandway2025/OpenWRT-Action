@@ -3,7 +3,7 @@
 # Author: P3TERX (Optimized & Extended)
 # Version: v11-prebuilt
 #=================================================
-name: 💻 X86_64
+name: 💻 Build OpenWrt (x86_64)
 
 permissions:
   contents: write
