@@ -1,6 +1,6 @@
 # Author: P3TERX (Modified and Optimized - Cache Enhanced)
 #=================================================
-name: 💻 Build OpenWrt
+name: 💻 Build OpenWrt demo
 permissions:
   contents: write
   actions: read
