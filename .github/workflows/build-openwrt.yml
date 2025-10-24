@@ -919,12 +919,7 @@ jobs:
             echo "🚀 Attempting build with prebuilt toolchain..."
             echo ""
             
-            if make -j$(nproc) \
-              IGNORE_ERRORS='n m' \
-              BUILD_LOG=1 \
-              CONFIG_AUTOREMOVE=y \
-              V=s \
-              world 2>&1 | tee /tmp/build.log; then
+            make -j$(nproc) 
               
               echo ""
               echo "════════════════════════════════════════════════════════════════"
@@ -968,12 +963,7 @@ jobs:
                 echo ""
                 
                 # 🔥 第二次尝试：重新编译工具链
-                if make -j$(nproc) \
-                  IGNORE_ERRORS='n m' \
-                  BUILD_LOG=1 \
-                  CONFIG_AUTOREMOVE=y \
-                  V=s \
-                  world; then
+               make -j$(nproc) 
                   
                   echo ""
                   echo "════════════════════════════════════════════════════════════════"
