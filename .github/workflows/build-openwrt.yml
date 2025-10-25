@@ -3,7 +3,7 @@
 # Author: P3TERX (Optimized with Prebuilt Toolchain)
 # Version: v12-toolchain-integrated
 #=================================================
-name: 💻 X86_64
+name: 💻 build-openwrt
 
 permissions:
   contents: write
