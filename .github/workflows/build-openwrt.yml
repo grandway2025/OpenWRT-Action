@@ -372,10 +372,14 @@ jobs:
           
           mkdir -p "$CCACHE_DIR"
 
-          # 更新时间戳
-          rm -rf bin 2>/dev/null || true
+          # 强制删除 bin
+          [ -e "bin" ] && rm -rf bin
           mkdir -p bin
-          chmod 755 bin
+    
+          # 修复权限
+          for dir in staging_dir build_dir tmp dl feeds .ccache; do
+          [ -d "$dir" ] && chmod -R u+w "$dir" 2>/dev/null || true
+          done
           
           # 🔥 使用配置文件代替多次命令行调用
           cat > "$CCACHE_DIR/ccache.conf" <<EOF
@@ -430,6 +434,12 @@ jobs:
           echo "📝 Configuration Loading & Customization"
           echo "════════════════════════════════════════════════════════════════"
           echo ""
+          
+          # 再次验证 bin 目录
+          if [ ! -d "bin" ] || [ ! -w "bin" ]; then
+            rm -rf bin 2>/dev/null
+            mkdir -p bin
+          fi
           
           # 1. 复制基础配置
           echo "📄 Loading base configuration..."
