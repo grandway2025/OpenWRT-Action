@@ -415,9 +415,9 @@ jobs:
           ENABLE_LUCKY: ${{ github.event.inputs.lucky == 'true' && 'y' || 'n' }}
           ENABLE_OAF: ${{ github.event.inputs.oaf == 'true' && 'y' || 'n' }}
           BUILD_FAST: ${{ github.event.inputs.build_fast == 'true' && 'y' || 'n' }} 
-          ENABLE_PREBUILT_TOOLCHAIN: ${{ github.event.inputs.enable_prebuilt_toolchain == 'true' && 'y' || 'n' }}
+          ENABLE_PREBUILT_TOOLCHAIN: ${{ github.event.inputs.build_fast == 'true' && 'y' || 'n' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          CURRENT_DATE: ${{ env.CURRENT_DATE }}
+          CURRENT_DATE: ${{ env.BUILD_DATE }}
         run: |
           cd "$OPENWRT_PATH"
           
@@ -427,35 +427,15 @@ jobs:
           echo ""
           
           # ============================================
-          # 🔥 强制修复 bin 目录（最高优先级）
-          # ============================================
-          echo "🔧 Pre-flight check: Fixing bin directory..."
-          
-          # 完全删除 bin（无论是什么）
-          if [ -e "bin" ]; then
-            echo "⚠️  Found existing 'bin', removing..."
-            rm -rf bin 2>/dev/null || {
-              chmod -R 777 bin 2>/dev/null
-              rm -rf bin
-            }
-          fi
-          
-          # 确保 bin 不存在
-          if [ -e "bin" ]; then
-            echo "❌ Failed to remove 'bin'"
-            ls -la bin
-            exit 1
-          fi
-          
-          echo "✅ 'bin' directory cleaned"
-          echo ""
-          
           # 1. 复制基础配置
+          # ============================================
           echo "📄 Loading base configuration..."
           cp "${{ github.workspace }}/$CONFIG_FILE" .config
           echo "✅ Base config loaded"
           
+          # ============================================
           # 2. 复制自定义文件
+          # ============================================
           if [ -d "$GITHUB_WORKSPACE/files" ]; then
             echo ""
             echo "📁 Copying custom files..."
@@ -463,30 +443,42 @@ jobs:
             echo "✅ Custom files copied"
           fi
           
-          # 3. 🔥 加载预编译工具链（独立脚本）
-          echo ""
-          echo "🔧 Loading prebuilt toolchain..."
-    
-          # 确保脚本可执行
-          chmod +x "${{ github.workspace }}/scripts/diy-toolchain.sh"
-    
-          # 执行工具链脚本
-          if "${{ github.workspace }}/scripts/diy-toolchain.sh"; then
-            echo "✅ Toolchain script completed"
-      
-            # 检查是否成功加载
-            if [ "$TOOLCHAIN_READY" = "true" ]; then
-              echo "TOOLCHAIN_READY=true" >> $GITHUB_ENV
-              echo "TOOLCHAIN_MODE=prebuilt" >> $GITHUB_ENV
+          # ============================================
+          # 3. 🔥 加载预编译工具链（如果启用）
+          # ============================================
+          if [ "${{ github.event.inputs.build_fast }}" = "true" ]; then
+            echo ""
+            echo "🔧 Loading prebuilt toolchain..."
+            
+            # 确保脚本可执行
+            chmod +x "${{ github.workspace }}/scripts/diy-toolchain.sh"
+            
+            # 执行工具链脚本
+            if "${{ github.workspace }}/scripts/diy-toolchain.sh"; then
+              echo "✅ Toolchain script completed"
+              
+              # 检查是否成功加载
+              if [ "$TOOLCHAIN_READY" = "true" ]; then
+                echo "TOOLCHAIN_READY=true" >> $GITHUB_ENV
+                echo "TOOLCHAIN_MODE=prebuilt" >> $GITHUB_ENV
+                echo "⚡ Using prebuilt toolchain - Expected time: ~45-60 minutes"
+              else
+                echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
+                echo "⛏️  Building toolchain from source - Expected time: ~70-90 minutes"
+              fi
             else
+              echo "⚠️  Toolchain script finished with warnings"
               echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
             fi
           else
-            echo "⚠️  Toolchain script finished with warnings"
+            echo ""
+            echo "ℹ️  Prebuilt toolchain disabled"
             echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
           fi
-    
+          
+          # ============================================
           # 4. 执行自定义脚本
+          # ============================================
           echo ""
           echo "🎨 Running customization scripts..."
           chmod +x -R "${{ github.workspace }}/scripts"
@@ -505,13 +497,28 @@ jobs:
           
           echo "  └─ ✅ All scripts completed"
           
-          # 生成最终配置
-          echo "⚙️ Generating defconfig..."
-          make defconfig
+          # ============================================
+          # 5. 🔥 生成最终配置（仅一次 defconfig）
+          # ============================================
+          echo ""
+          echo "⚙️ Generating final configuration (defconfig)..."
+          if make defconfig V=s 2>&1 | tee /tmp/defconfig.log; then
+            echo "✅ Configuration generated successfully"
+          else
+            echo "❌ Configuration generation failed"
+            echo "📋 Last 30 lines of log:"
+            tail -30 /tmp/defconfig.log
+            exit 1
+          fi
           
-          # 提取目标信息
+          # ============================================
+          # 6. 提取配置信息
+          # ============================================
+          echo ""
+          echo "📋 Extracting build information..."
           DEVICE_TARGET=$(awk -F'"' '/^CONFIG_TARGET_BOARD=/{print $2}' .config || echo "x86")
           DEVICE_SUBTARGET=$(awk -F'"' '/^CONFIG_TARGET_SUBTARGET=/{print $2}' .config || echo "64")
+          PKG_COUNT=$(grep -c "^CONFIG_PACKAGE_.*=y" .config || echo 0)
           
           {
             echo "DEVICE_TARGET=$DEVICE_TARGET"
@@ -523,17 +530,23 @@ jobs:
             grep -m1 '"tag_name"' | cut -d'"' -f4 | sed 's/^v//' || echo "unknown")
           echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
           
-          # 显示配置信息
+          # ============================================
+          # 7. 配置总结
+          # ============================================
           echo ""
+          echo "════════════════════════════════════════════════════════════════"
           echo "✅ Configuration Summary"
-          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "📱 Target: $DEVICE_TARGET / $DEVICE_SUBTARGET"
           echo "📌 Latest Release: $LATEST_RELEASE"
           echo "🌐 LAN: $LAN"
+          echo "📦 Packages: $PKG_COUNT"
           echo "🔧 Toolchain: ${TOOLCHAIN_MODE:-unknown}"
           echo ""
           echo "📦 Plugins:"
           echo "  Docker: $ENABLE_DOCKER | SSRP: $ENABLE_SSRP | Passwall: $ENABLE_PASSWALL"
           echo "  OpenClash: $ENABLE_OPENCLASH | Nikki: $ENABLE_NIKKI | Lucky: $ENABLE_LUCKY | OAF: $ENABLE_OAF"
+          echo "════════════════════════════════════════════════════════════════"
       # ============================================
       # 10. 强制清理（保留关键缓存）
       # ============================================
