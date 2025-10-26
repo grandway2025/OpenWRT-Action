@@ -3,7 +3,7 @@
 # Author: P3TERX (Optimized with Prebuilt Toolchain)
 # Version: v12-toolchain-integrated
 #=================================================
-name: 💻 build-openwrt
+name: 💻 Build-openwrt
 
 permissions:
   contents: write
@@ -247,7 +247,7 @@ jobs:
           } >> $GITHUB_ENV
       
       # ============================================
-      # 6. 🔥 预编译工具链下载（新增）
+      # 6. 🔥 预编译工具链下载（自动检测+智能回退）
       # ============================================
       - name: 🔧 Download Prebuilt Toolchain
         if: github.event.inputs.use_prebuilt_toolchain == 'true'
@@ -256,50 +256,58 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          echo "====================================="
-          echo "🔧 Downloading Prebuilt Toolchain"
-          echo "====================================="
-          echo "Filename: ${{ env.TOOLCHAIN_FILENAME }}"
-          echo ""
+          echo "🔧 Detecting toolchain configuration..."
           
-          # 下载工具链
-          mkdir -p /tmp/toolchain
+          # 自动检测配置
+          LIBC="musl"
+          GCC_VER="15"
           
-          if gh release download "$REPO_BRANCH" \
-            --repo ${{ github.repository }} \
-            --pattern "${{ env.TOOLCHAIN_FILENAME }}" \
-            --dir /tmp/toolchain 2>&1; then
-            
-            echo "✅ Toolchain downloaded"
-            
-            # 解压
-            echo "📦 Extracting toolchain..."
-            if tar -I "zstd -d" -xf "/tmp/toolchain/${{ env.TOOLCHAIN_FILENAME }}" 2>&1 | grep -v "Removing leading" || true; then
-              echo "✅ Toolchain extracted"
-              
-              # 更新时间戳
-              echo "🔄 Updating timestamps..."
-              mkdir -p bin
-              find ./staging_dir/ -name '*' -exec touch {} \; 2>/dev/null || true
-              find ./tmp/ -name '*' -exec touch {} \; 2>/dev/null || true
-              
-              # 清理
-              rm -rf /tmp/toolchain
-              
-              echo "✅ Prebuilt toolchain ready"
-              echo "TOOLCHAIN_LOADED=true" >> $GITHUB_ENV
-            else
-              echo "⚠️  Extraction failed, will use cache fallback"
-              rm -rf /tmp/toolchain
-              echo "TOOLCHAIN_LOADED=false" >> $GITHUB_ENV
-            fi
-          else
-            echo "⚠️  Download failed, will use cache fallback"
-            rm -rf /tmp/toolchain
-            echo "TOOLCHAIN_LOADED=false" >> $GITHUB_ENV
+          if [ -f "${{ github.workspace }}/$CONFIG_FILE" ]; then
+            grep -q "CONFIG_LIBC_USE_GLIBC=y" "${{ github.workspace }}/$CONFIG_FILE" && LIBC="glibc"
+            grep -q "CONFIG_GCC_USE_VERSION_13=y" "${{ github.workspace }}/$CONFIG_FILE" && GCC_VER="13"
+            grep -q "CONFIG_GCC_USE_VERSION_14=y" "${{ github.workspace }}/$CONFIG_FILE" && GCC_VER="14"
           fi
           
-          echo "====================================="
+          echo "📋 Config: ${{ env.TOOLCHAIN_ARCH }}/${LIBC}/GCC-${GCC_VER}"
+          
+          # 智能回退列表
+          VERSIONS=("$GCC_VER")
+          [ "$GCC_VER" != "15" ] && VERSIONS+=("15")
+          [ "$GCC_VER" != "14" ] && VERSIONS+=("14")
+          [ "$GCC_VER" != "13" ] && VERSIONS+=("13")
+          
+          LOADED=false
+          mkdir -p /tmp/tc
+          
+          for VER in "${VERSIONS[@]}"; do
+            FILE="toolchain_${LIBC}_${{ env.TOOLCHAIN_ARCH }}_gcc-${VER}_ccache.tar.zst"
+            echo "📥 Trying GCC $VER..."
+            
+            if gh release download "$REPO_BRANCH" \
+              --repo ${{ github.repository }} \
+              --pattern "$FILE" \
+              --dir /tmp/tc 2>&1 | grep -q "Downloaded"; then
+              
+              if tar -I "zstd -d -T0" -xf "/tmp/tc/$FILE" 2>&1 | head -1; then
+                mkdir -p bin
+                find staging_dir tmp -type f -exec touch {} + 2>/dev/null || true
+                rm -rf /tmp/tc
+                
+                echo "✅ Loaded: GCC $VER"
+                LOADED=true
+                echo "TOOLCHAIN_LOADED=true" >> $GITHUB_ENV
+                echo "TOOLCHAIN_GCC=$VER" >> $GITHUB_ENV
+                break
+              fi
+            fi
+            rm -rf /tmp/tc/*
+          done
+          
+          if [ "$LOADED" = false ]; then
+            echo "⚠️  Using cache fallback"
+            rm -rf /tmp/tc
+            echo "TOOLCHAIN_LOADED=false" >> $GITHUB_ENV
+          fi
       
       # ============================================
       # 7. 🔥 多层缓存策略（保持原有7个缓存）
@@ -588,34 +596,19 @@ jobs:
       # 13. 编译固件（优化版 - 简化）
       # ============================================
       - name: 🔨 Compile Firmware
-        id: compile
-        timeout-minutes: 600
         run: |
           cd "$OPENWRT_PATH"
           
-          echo "🔨 Compiling..."
+          echo "🔨 Starting compilation..."
+          echo "  Threads: $(nproc)"
+          [ "${{ env.TOOLCHAIN_LOADED }}" = "true" ] && echo "  Toolchain: Prebuilt GCC ${{ env.TOOLCHAIN_GCC }}"
+          echo ""
           
-          # 🔥 显示工具链状态
-          if [ "${{ env.TOOLCHAIN_LOADED }}" = "true" ]; then
-            echo "✅ Using prebuilt toolchain (faster build expected)"
-          else
-            echo "📦 Using cached/fresh toolchain"
-          fi
-          
-          echo "=== ccache initial stats ==="
-          ccache -s
-          
-          make -j$(nproc) || make -j1 V=s || exit 1
+          # 开始编译
+          make -j$(nproc) || make -j1 V=s
           
           echo ""
-          echo "✅ Success"
-          echo "status=success" >> $GITHUB_OUTPUT
-          
-          echo ""
-          echo "📊 ccache stats:"
-          echo "=== ccache final stats ==="
-          ccache -s || echo "ccache stats not available"
-          echo "Cache directory size: $(du -sh .ccache 2>/dev/null || echo 'N/A')"
+          echo "✅ Compilation completed successfully"
    
       # ============================================
       # 14. 📊 构建报告（合并统计步骤）
