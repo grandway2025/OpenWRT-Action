@@ -1,9 +1,9 @@
 #=================================================
 # 优化版：集成预编译工具链，保持缓存76%+命中率
 # Author: P3TERX (Optimized with Prebuilt Toolchain)
-# Version: v12-toolchain-integrated
+# Version: v13-with-prebuilt-toolchain-fixed
 #=================================================
-name: 💻 Build-openwrt
+name: 💻 Build OpenWrt
 
 permissions:
   contents: write
@@ -34,10 +34,6 @@ on:
         description: "🌐 Passwall"
         type: boolean
         default: true
-      nikki:
-        description: "📦 Nikki"
-        type: boolean
-        default: true
       openclash:
         description: "⚡ OpenClash"
         type: boolean
@@ -50,8 +46,12 @@ on:
         description: "🛡️ OpenAppFilter"
         type: boolean
         default: true
-      use_prebuilt_toolchain:
-        description: "🔧 使用预编译工具链"
+      force_clean:
+        description: "🧹 强制清理缓存"
+        type: boolean
+        default: false
+      enable_prebuilt_toolchain:
+        description: "🚀 使用预编译工具链"
         type: boolean
         default: true
 
@@ -99,6 +99,7 @@ jobs:
           DATE=$(date +'%Y-%m-%d %H:%M:%S')
           BUILD_ID="${{ github.run_number }}-${GITHUB_SHA::7}"
           FILE_DATE=$(date +'%Y.%m.%d-%H%M')
+          CURRENT_DATE=$(date +'%Y-%m-%d')
           
           # 自动并行计算
           PROC_COUNT=$(nproc)
@@ -119,13 +120,6 @@ jobs:
           # 源码版本键
           SOURCE_KEY="${REPO_BRANCH}-$(echo "${REPO_URL}" | sha256sum | cut -c1-6)"
           
-          # 🔥 工具链信息（x86_64 固定架构）
-          TOOLCHAIN_ARCH="x86_64"
-          TOOLCHAIN_LIBC="musl"  # 根据实际情况调整
-          TOOLCHAIN_GCC="15"     # 根据实际情况调整
-          TOOLCHAIN_TOOLS="ccache"
-          TOOLCHAIN_FILENAME="toolchain_${TOOLCHAIN_LIBC}_${TOOLCHAIN_ARCH}_gcc-${TOOLCHAIN_GCC}_${TOOLCHAIN_TOOLS}.tar.zst"
-          
           # 显示系统信息
           echo "====================================="
           echo "📊 System Information"
@@ -138,10 +132,6 @@ jobs:
           echo "🔑 Cache Keys:"
           echo "  Month: $MONTH_KEY | Week: $WEEK_KEY | Day: $DAY_KEY"
           echo "  Plugins: $PLUGINS_HASH | Source: $SOURCE_KEY"
-          echo "---"
-          echo "🔧 Toolchain:"
-          echo "  Use Prebuilt: ${{ github.event.inputs.use_prebuilt_toolchain }}"
-          echo "  Filename: $TOOLCHAIN_FILENAME"
           echo "====================================="
           
           # 导出环境变量
@@ -150,14 +140,13 @@ jobs:
             echo "BUILD_DATE=$DATE"
             echo "BUILD_ID=$BUILD_ID"
             echo "FILE_DATE=$FILE_DATE"
+            echo "CURRENT_DATE=$CURRENT_DATE"
             echo "COMPILE_JOBS=$JOBS"
             echo "MONTH_KEY=$MONTH_KEY"
             echo "WEEK_KEY=$WEEK_KEY"
             echo "DAY_KEY=$DAY_KEY"
             echo "PLUGINS_HASH=$PLUGINS_HASH"
             echo "SOURCE_KEY=$SOURCE_KEY"
-            echo "TOOLCHAIN_ARCH=$TOOLCHAIN_ARCH"
-            echo "TOOLCHAIN_FILENAME=$TOOLCHAIN_FILENAME"
           } >> $GITHUB_ENV
       
       # ============================================
@@ -245,85 +234,193 @@ jobs:
             echo "COMMIT_MESSAGE=${MESSAGE}"
             echo "COMMIT_HASH=${HASH}"
           } >> $GITHUB_ENV
-      
+
       # ============================================
-      # 6. 🔥 预编译工具链下载（自动检测+智能回退）
+      # 6. 🔥 预编译工具链下载与恢复（修复版）
       # ============================================
-      - name: 🔧 Download Prebuilt Toolchain
-        if: github.event.inputs.use_prebuilt_toolchain == 'true'
+      - name: 🔍 Check Prebuilt Toolchain
+        id: check_toolchain
+        if: github.event.inputs.enable_prebuilt_toolchain == 'true' && github.event.inputs.force_clean != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd "$OPENWRT_PATH"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "                    TOOLCHAIN CACHE SYSTEM                      "
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  📦 Architecture: x86_64"
+          echo "  🔧 GCC Version: 13"
+          echo "  📚 C Library: musl"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
           
-          echo "🔧 Detecting toolchain configuration..."
-          
-          # 自动检测配置
+          # 工具链配置
+          TOOLCHAIN_ARCH="x86_64"
+          GCC_VERSION="13"
           LIBC="musl"
-          GCC_VER="15"
+          TOOLCHAIN_TAG="openwrt-24.10"
+          TOOLCHAIN_FILENAME="toolchain_${LIBC}_${TOOLCHAIN_ARCH}_gcc-${GCC_VERSION}.tar.zst"
           
-          if [ -f "${{ github.workspace }}/$CONFIG_FILE" ]; then
-            grep -q "CONFIG_LIBC_USE_GLIBC=y" "${{ github.workspace }}/$CONFIG_FILE" && LIBC="glibc"
-            grep -q "CONFIG_GCC_USE_VERSION_13=y" "${{ github.workspace }}/$CONFIG_FILE" && GCC_VER="13"
-            grep -q "CONFIG_GCC_USE_VERSION_14=y" "${{ github.workspace }}/$CONFIG_FILE" && GCC_VER="14"
+          echo "toolchain_filename=$TOOLCHAIN_FILENAME" >> $GITHUB_OUTPUT
+          echo "toolchain_tag=$TOOLCHAIN_TAG" >> $GITHUB_OUTPUT
+          
+          # 检查 Release 是否存在
+          echo "🔍 Checking for prebuilt toolchain release: $TOOLCHAIN_TAG"
+          
+          if gh release view "$TOOLCHAIN_TAG" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Found prebuilt toolchain release"
+            
+            # 检查文件是否存在
+            if gh release view "$TOOLCHAIN_TAG" --repo ${{ github.repository }} --json assets --jq '.assets[].name' | grep -q "$TOOLCHAIN_FILENAME"; then
+              echo "file_exists=true" >> $GITHUB_OUTPUT
+              echo "✅ Toolchain file exists: $TOOLCHAIN_FILENAME"
+            else
+              echo "file_exists=false" >> $GITHUB_OUTPUT
+              echo "⚠️  Toolchain file not found: $TOOLCHAIN_FILENAME"
+            fi
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "file_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No prebuilt toolchain release found"
           fi
           
-          echo "📋 Config: ${{ env.TOOLCHAIN_ARCH }}/${LIBC}/GCC-${GCC_VER}"
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+      
+      - name: 📥 Download & Restore Prebuilt Toolchain
+        id: download_toolchain
+        if: |
+          steps.check_toolchain.outputs.exists == 'true' && 
+          steps.check_toolchain.outputs.file_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🚀 Downloading prebuilt toolchain..."
           
-          # 智能回退列表
-          VERSIONS=("$GCC_VER")
-          [ "$GCC_VER" != "15" ] && VERSIONS+=("15")
-          [ "$GCC_VER" != "14" ] && VERSIONS+=("14")
-          [ "$GCC_VER" != "13" ] && VERSIONS+=("13")
+          TOOLCHAIN_FILENAME="${{ steps.check_toolchain.outputs.toolchain_filename }}"
+          TOOLCHAIN_TAG="${{ steps.check_toolchain.outputs.toolchain_tag }}"
           
-          LOADED=false
-          mkdir -p /tmp/tc
-          
-          for VER in "${VERSIONS[@]}"; do
-            FILE="toolchain_${LIBC}_${{ env.TOOLCHAIN_ARCH }}_gcc-${VER}_ccache.tar.zst"
-            echo "📥 Trying GCC $VER..."
-            
-            if gh release download "$REPO_BRANCH" \
+          # 下载工具链（3次重试）
+          DOWNLOAD_SUCCESS=false
+          for attempt in 1 2 3; do
+            echo "   Attempt $attempt/3..."
+            if gh release download "$TOOLCHAIN_TAG" \
               --repo ${{ github.repository }} \
-              --pattern "$FILE" \
-              --dir /tmp/tc 2>&1 | grep -q "Downloaded"; then
-              
-              if tar -I "zstd -d -T0" -xf "/tmp/tc/$FILE" 2>&1 | head -1; then
-                mkdir -p bin
-                find staging_dir tmp -type f -exec touch {} + 2>/dev/null || true
-                rm -rf /tmp/tc
-                
-                echo "✅ Loaded: GCC $VER"
-                LOADED=true
-                echo "TOOLCHAIN_LOADED=true" >> $GITHUB_ENV
-                echo "TOOLCHAIN_GCC=$VER" >> $GITHUB_ENV
-                break
-              fi
+              --pattern "$TOOLCHAIN_FILENAME" \
+              --dir /tmp 2>&1; then
+              DOWNLOAD_SUCCESS=true
+              echo "   ✅ Download completed"
+              break
+            else
+              echo "   ❌ Attempt $attempt failed"
+              rm -f "/tmp/$TOOLCHAIN_FILENAME"
+              [ $attempt -lt 3 ] && sleep 10
             fi
-            rm -rf /tmp/tc/*
           done
           
-          if [ "$LOADED" = false ]; then
-            echo "⚠️  Using cache fallback"
-            rm -rf /tmp/tc
-            echo "TOOLCHAIN_LOADED=false" >> $GITHUB_ENV
+          if [ "$DOWNLOAD_SUCCESS" = false ]; then
+            echo "❌ Failed to download toolchain after 3 attempts"
+            echo "use_toolchain=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
+          
+          # 验证下载的文件
+          if [ ! -f "/tmp/$TOOLCHAIN_FILENAME" ]; then
+            echo "❌ Toolchain file not found after download"
+            echo "use_toolchain=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "📊 Archive size: $(du -h "/tmp/$TOOLCHAIN_FILENAME" | cut -f1)"
+          
+          # 验证压缩包完整性
+          echo "🔍 Verifying archive..."
+          if ! zstd -t "/tmp/$TOOLCHAIN_FILENAME" >/dev/null 2>&1; then
+            echo "❌ Archive verification failed"
+            rm -f "/tmp/$TOOLCHAIN_FILENAME"
+            echo "use_toolchain=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "✅ Archive verified"
+          
+          # 解压工具链
+          cd "$OPENWRT_PATH"
+          
+          echo "📦 Extracting toolchain..."
+          if tar -I "zstd -d" -xf "/tmp/$TOOLCHAIN_FILENAME" 2>&1 | grep -v "Ignoring unknown" || true; then
+            rm -f "/tmp/$TOOLCHAIN_FILENAME"
+            
+            # 更新时间戳
+            echo "🔧 Processing files..."
+            mkdir -p bin
+            find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
+            find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
+            
+            # 验证工具链
+            TOOLCHAIN_DIR=$(find staging_dir -maxdepth 1 -type d -name "toolchain-*" 2>/dev/null | head -1)
+            if [ -n "$TOOLCHAIN_DIR" ] && [ -d "$TOOLCHAIN_DIR" ]; then
+              GCC_BIN=$(find "$TOOLCHAIN_DIR/bin" -name "*-gcc" -type f 2>/dev/null | head -1)
+              if [ -n "$GCC_BIN" ] && [ -f "$GCC_BIN" ]; then
+                chmod +x "$GCC_BIN" 2>/dev/null || true
+                if GCC_VER=$("$GCC_BIN" --version 2>&1 | head -1); then
+                  echo "   ✅ Compiler: ${GCC_VER}"
+                  echo ""
+                  echo "╔════════════════════════════════════════════════════════════╗"
+                  echo "║  ✅ Toolchain Ready - Build time reduced by ~25 minutes   ║"
+                  echo "╚════════════════════════════════════════════════════════════╝"
+                  echo "use_toolchain=true" >> $GITHUB_OUTPUT
+                  echo "TOOLCHAIN_READY=true" >> $GITHUB_ENV
+                  exit 0
+                fi
+              fi
+            fi
+            
+            echo "⚠️  Toolchain verification failed"
+            echo "use_toolchain=false" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Extraction failed"
+            rm -f "/tmp/$TOOLCHAIN_FILENAME"
+            echo "use_toolchain=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: ℹ️ Toolchain Build Mode
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+          
+          if [ "${{ steps.download_toolchain.outputs.use_toolchain }}" = "true" ]; then
+            echo "✅ 使用预编译工具链"
+            echo "   Build time will be reduced by ~25 minutes"
+            echo "TOOLCHAIN_MODE=prebuilt" >> $GITHUB_ENV
+          else
+            echo "⛏️  从源码构建工具链"
+            echo "   This will take additional ~25 minutes"
+            echo "   💡 Tip: Run 'Build Toolchain' workflow to speed up future builds"
+            echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
+          fi
+          
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
       
       # ============================================
       # 7. 🔥 多层缓存策略（保持原有7个缓存）
       # ============================================
       
-      # 工具链缓存 - 仅在未使用预编译工具链时启用
+      # 工具链缓存 - 如果使用了预编译工具链，跳过此缓存
       - name: ☁️ Cache Toolchain (Monthly)
         if: |
           github.event.inputs.force_clean != 'true' && 
-          (github.event.inputs.use_prebuilt_toolchain != 'true' || env.TOOLCHAIN_LOADED != 'true')
+          steps.download_toolchain.outputs.use_toolchain != 'true'
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/toolchain-*
             openwrt/build_dir/toolchain-*
-          key: toolchain-${{ env.SOURCE_KEY }}-${{ env.MONTH_KEY }}-v12
+          key: toolchain-${{ env.SOURCE_KEY }}-${{ env.MONTH_KEY }}-v13
           restore-keys: |
             toolchain-${{ env.SOURCE_KEY }}-${{ env.MONTH_KEY }}-
             toolchain-${{ env.SOURCE_KEY }}-
@@ -331,16 +428,14 @@ jobs:
       
       # Staging 目录缓存 - 周度更新
       - name: ☁️ Cache Staging Directory (Weekly)
-        if: |
-          github.event.inputs.force_clean != 'true' && 
-          (github.event.inputs.use_prebuilt_toolchain != 'true' || env.TOOLCHAIN_LOADED != 'true')
+        if: github.event.inputs.force_clean != 'true'
         uses: actions/cache@v4
         with:
           path: |
             openwrt/staging_dir/host*
             openwrt/staging_dir/hostpkg
             openwrt/staging_dir/packages
-          key: staging-${{ env.SOURCE_KEY }}-${{ env.WEEK_KEY }}-v12
+          key: staging-${{ env.SOURCE_KEY }}-${{ env.WEEK_KEY }}-v13
           restore-keys: |
             staging-${{ env.SOURCE_KEY }}-${{ env.WEEK_KEY }}-
             staging-${{ env.SOURCE_KEY }}-
@@ -353,19 +448,18 @@ jobs:
         with:
           path: |
             openwrt/build_dir/host*
-          key: buildhost-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v12
+          key: buildhost-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v13
           restore-keys: |
             buildhost-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-
             buildhost-${{ env.SOURCE_KEY }}-
             buildhost-${{ env.REPO_BRANCH }}-
       
-      # 下载缓存 - 长期有效（预编译工具链已包含 dl，但保留作为备份）
+      # 下载缓存 - 长期有效
       - name: ☁️ Cache Downloads (Long-term)
-        if: github.event.inputs.use_prebuilt_toolchain != 'true' || env.TOOLCHAIN_LOADED != 'true'
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: downloads-${{ env.SOURCE_KEY }}-${{ env.MONTH_KEY }}-v12
+          key: downloads-${{ env.SOURCE_KEY }}-${{ env.MONTH_KEY }}-v13
           restore-keys: |
             downloads-${{ env.SOURCE_KEY }}-
             downloads-${{ env.REPO_BRANCH }}-
@@ -376,7 +470,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v12
+          key: ccache-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.WEEK_KEY }}-v13
           restore-keys: |
             ccache-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-
             ccache-${{ env.SOURCE_KEY }}-
@@ -390,7 +484,7 @@ jobs:
           path: |
             openwrt/feeds
             openwrt/.git/modules
-          key: feeds-${{ env.SOURCE_KEY }}-${{ env.WEEK_KEY }}-v12
+          key: feeds-${{ env.SOURCE_KEY }}-${{ env.WEEK_KEY }}-v13
           restore-keys: |
             feeds-${{ env.SOURCE_KEY }}-
             feeds-${{ env.REPO_BRANCH }}-
@@ -403,7 +497,7 @@ jobs:
           path: |
             openwrt/build_dir/target-*/linux-*/linux-*/.configured
             openwrt/build_dir/target-*/linux-*/modules.builtin*
-          key: builddir-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.DAY_KEY }}-v12
+          key: builddir-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-${{ env.DAY_KEY }}-v13
           restore-keys: |
             builddir-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-
             builddir-${{ env.SOURCE_KEY }}-
@@ -478,9 +572,9 @@ jobs:
             echo "CONFIG_CCACHE=y"
             echo "FORCE_UNSAFE_CONFIGURE=1"
           } >> $GITHUB_ENV
-      
-            # ============================================
-      # 10. 📝 配置加载与应用
+     
+      # ============================================
+      # 10. 📝 配置加载与应用（简化版）
       # ============================================
       - name: 📝 Load Configuration & Apply Customization
         env:
@@ -517,16 +611,26 @@ jobs:
             echo "✅ Custom files copied"
           fi
           
-          # 3. 加载预编译工具链（如果启用）
+          # 3. 🔥 加载预编译工具链（如果启用）
           if [ "${{ github.event.inputs.enable_prebuilt_toolchain }}" = "true" ]; then
             echo ""
             echo "🔧 Loading prebuilt toolchain..."
-            chmod +x "${{ github.workspace }}/scripts/load-toolchain.sh"
-            if "${{ github.workspace }}/scripts/load-toolchain.sh"; then
+            chmod +x "${{ github.workspace }}/scripts/diy-toolchain.sh"
+            if "${{ github.workspace }}/scripts/diy-toolchain.sh"; then
               echo "✅ Toolchain loader completed"
+              # 导出 TOOLCHAIN_READY 状态
+              if [ "$TOOLCHAIN_READY" = "true" ]; then
+                echo "TOOLCHAIN_READY=true" >> $GITHUB_ENV
+                echo "TOOLCHAIN_MODE=prebuilt" >> $GITHUB_ENV
+              fi
             else
-              echo "⚠️  Toolchain loader finished (may build from source)"
+              echo "⚠️  Toolchain loader finished (will build from source)"
+              echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
             fi
+          else
+            echo ""
+            echo "ℹ️  Prebuilt toolchain disabled"
+            echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
           fi
           
           # 4. 执行自定义脚本
@@ -548,13 +652,15 @@ jobs:
           
           echo "  └─ ✅ All scripts completed"
           
-          # 5. 生成最终配置（仅一次 defconfig）
+          # 5. 🔥 生成最终配置（仅一次 defconfig）
           echo ""
-          echo "⚙️ Generating final configuration..."
-          if make defconfig V=s; then
+          echo "⚙️ Generating final configuration (defconfig)..."
+          if make defconfig V=s 2>&1 | tee /tmp/defconfig.log; then
             echo "✅ Configuration generated successfully"
           else
             echo "❌ Configuration generation failed"
+            echo "📋 Last 30 lines of log:"
+            tail -30 /tmp/defconfig.log
             exit 1
           fi
           
@@ -578,13 +684,12 @@ jobs:
           echo "📱 Target: $DEVICE_TARGET / $DEVICE_SUBTARGET"
           echo "🌐 LAN: $LAN"
           echo "📦 Packages: $PKG_COUNT"
-          echo "🔧 Toolchain: ${{ env.TOOLCHAIN_READY == 'true' && 'Prebuilt' || 'Build from source' }}"
+          echo "🔧 Toolchain: ${{ env.TOOLCHAIN_MODE }}"
           echo ""
           echo "📦 Plugins:"
           echo "  Docker: $ENABLE_DOCKER | SSRP: $ENABLE_SSRP | Passwall: $ENABLE_PASSWALL"
           echo "  OpenClash: $ENABLE_OPENCLASH | Lucky: $ENABLE_LUCKY | OAF: $ENABLE_OAF"
           echo "════════════════════════════════════════════════════════════════"
-      
       # ============================================
       # 11. 强制清理（保留关键缓存）
       # ============================================
@@ -611,17 +716,14 @@ jobs:
       - name: 📥 Download Packages (Incremental)
         run: |
           cd "$OPENWRT_PATH"
-          
-          # 🔥 如果使用了预编译工具链，跳过已有的下载
-          if [ "${{ env.TOOLCHAIN_LOADED }}" = "true" ]; then
-            echo "✅ Using downloads from prebuilt toolchain"
-            echo "📊 Cached files: $(find dl -type f 2>/dev/null | wc -l)"
-          fi
-          
-          echo "📥 Downloading missing packages..."
-          
+          echo "📥 Starting optimized package download..."
           # 提升下载并行度
           DOWNLOAD_JOBS=$((COMPILE_JOBS < 16 ? COMPILE_JOBS * 2 : 16))
+          
+          # 🔥 检查已下载文件
+          if [ -d "dl" ] && [ "$(ls -A dl 2>/dev/null)" ]; then
+            echo "✅ Found $(ls dl 2>/dev/null | wc -l) cached files in dl/"
+          fi
           
           # 简化工具选择
           if command -v aria2c &>/dev/null; then
@@ -638,35 +740,48 @@ jobs:
       # 13. 编译固件（优化版 - 简化）
       # ============================================
       - name: 🔨 Compile Firmware
+        id: compile
+        timeout-minutes: 600
         run: |
           cd "$OPENWRT_PATH"
           
-          echo "🔨 Starting compilation..."
-          echo "  Threads: $(nproc)"
-          [ "${{ env.TOOLCHAIN_LOADED }}" = "true" ] && echo "  Toolchain: Prebuilt GCC ${{ env.TOOLCHAIN_GCC }}"
+          echo "🔨 Compiling with $COMPILE_JOBS parallel jobs..."
+          echo "=== ccache initial stats ==="
+          ccache -s
+          
+          # 🔥 根据工具链模式显示预期时间
+          if [ "${{ env.TOOLCHAIN_MODE }}" = "prebuilt" ]; then
+            echo "⚡ Using prebuilt toolchain - Expected time: ~45-60 minutes"
+          else
+            echo "⛏️  Building toolchain from source - Expected time: ~70-90 minutes"
+          fi
           echo ""
           
-          # 开始编译
-          make -j$(nproc) || make -j1 V=s
+          make -j$COMPILE_JOBS || make -j1 V=s || exit 1
           
           echo ""
-          echo "✅ Compilation completed successfully"
+          echo "✅ Compilation successful"
+          echo "status=success" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📊 ccache final stats:"
+          echo "=== ccache final stats ==="
+          ccache -s || echo "ccache stats not available"
+          echo "Cache directory size: $(du -sh .ccache 2>/dev/null | cut -f1 || echo 'N/A')"
    
       # ============================================
       # 14. 📊 构建报告（合并统计步骤）
       # ============================================
-      - name: 📊 Cache Statistics
+      - name: 📊 Build Statistics & Cache Report
         if: always()
         run: |
           cd "$OPENWRT_PATH"
-          echo "=== 🎯 Cache Effectiveness Report ==="
+          echo "════════════════════════════════════════════════════════════════"
+          echo "                    🎯 BUILD REPORT                             "
+          echo "════════════════════════════════════════════════════════════════"
           echo "Build Time: $(date)"
           echo "Build ID: ${{ env.BUILD_ID }}"
-          echo ""
-          
-          echo "🔧 Toolchain Status:"
-          echo "  Prebuilt Used: ${{ env.TOOLCHAIN_LOADED }}"
-          echo "  Filename: ${{ env.TOOLCHAIN_FILENAME }}"
+          echo "Build Status: ${{ steps.compile.outputs.status }}"
           echo ""
           
           echo "📋 Cache Keys:"
@@ -674,6 +789,14 @@ jobs:
           echo "  Month: ${{ env.MONTH_KEY }}"
           echo "  Week: ${{ env.WEEK_KEY }}"
           echo "  Plugins: ${{ env.PLUGINS_HASH }}"
+          echo ""
+          
+          echo "🔧 Toolchain Status:"
+          if [ "${{ env.TOOLCHAIN_READY }}" = "true" ]; then
+            echo "  ✅ Using prebuilt toolchain (saved ~25 minutes)"
+          else
+            echo "  🔨 Built from source"
+          fi
           echo ""
           
           echo "📁 Directory Sizes:"
@@ -693,7 +816,8 @@ jobs:
           else
             echo "ccache not available"
           fi
-          echo "================================="    
+          echo "════════════════════════════════════════════════════════════════"
+      
       # ============================================
       # 15. 整理固件文件
       # ============================================
@@ -734,7 +858,8 @@ jobs:
             "subtarget": "$DEVICE_SUBTARGET",
             "lan_address": "${{ github.event.inputs.lan_addr }}",
             "commit_hash": "$COMMIT_HASH",
-            "prebuilt_toolchain": "${{ env.TOOLCHAIN_LOADED }}",
+            "toolchain_mode": "${{ env.TOOLCHAIN_MODE }}",
+            "toolchain_prebuilt": ${{ env.TOOLCHAIN_READY == 'true' && 'true' || 'false' }},
             "plugins": {
               "docker": ${{ github.event.inputs.docker }},
               "ssrp": ${{ github.event.inputs.ssrp }},
@@ -791,7 +916,7 @@ jobs:
             | **内核** | `${{ steps.organize.outputs.kernel_version }}` |
             | **LAN IP** | `${{ github.event.inputs.lan_addr }}` |
             | **Password** | `${{ github.event.inputs.root_password }}` |
-            | **预编译工具链** | `${{ env.TOOLCHAIN_LOADED == 'true' && '✅ 已使用' || '❌ 未使用' }}` |
+            | **工具链** | ${{ env.TOOLCHAIN_READY == 'true' && '✅ 预编译工具链 (节省 ~25 分钟)' || '🔨 从源码构建' }} |
             
             ### 📦 包含的插件
             | 插件 | 状态 |
@@ -812,15 +937,23 @@ jobs:
             - **时间**: ${{ env.COMMIT_DATE }}
             - **消息**: ${{ env.COMMIT_MESSAGE }}
             
-            ### 🔧 构建优化
-            ${{ env.TOOLCHAIN_LOADED == 'true' && '- ✅ 使用预编译工具链（节省 20-30 分钟编译时间）' || '- 📦 使用缓存工具链' }}
-            - ✅ 多层缓存策略（76%+ 命中率）
-            - ✅ ccache 编译加速
-            - ✅ 增量 Feeds 更新
+            ### 🚀 性能优化
+            - ✅ **预编译工具链**: ${{ env.TOOLCHAIN_READY == 'true' && '已启用 - 节省 20-30 分钟构建时间' || '未启用 - 可运行 Build Toolchain 工作流加速后续构建' }}
+            - ✅ **ccache 缓存**: 76%+ 命中率
+            - ✅ **多层缓存策略**: 7 层智能缓存
+            - ✅ **增量构建**: 仅重新编译变更部分
             
             ### 📥 安装说明
             
             #### UEFI 固件（推荐）：
             ```bash
+            # 1. 解压固件
             gunzip openwrt-*-generic-ext4-combined-efi.img.gz
-            dd if=openwrt-*-generic-ext4-combined-efi.img of=/dev/sdX bs=4M status=progress
+            
+            # 2. 写入磁盘（替换 /dev/sdX 为实际设备）
+            sudo dd if=openwrt-*-generic-ext4-combined-efi.img of=/dev/sdX bs=4M status=progress
+            
+            # 3. 同步并弹出
+            sync
+            sudo eject /dev/sdX
+          
