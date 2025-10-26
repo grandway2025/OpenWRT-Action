@@ -371,11 +371,6 @@ jobs:
           export FORCE_UNSAFE_CONFIGURE=1
           
           mkdir -p "$CCACHE_DIR"
-
-          # 强制删除 bin
-          rm -rf bin 2>/dev/null || true
-          mkdir -p bin
-          chmod 755 bin
           
           # 🔥 使用配置文件代替多次命令行调用
           cat > "$CCACHE_DIR/ccache.conf" <<EOF
@@ -425,7 +420,10 @@ jobs:
           CURRENT_DATE: ${{ env.CURRENT_DATE }}
         run: |
           cd "$OPENWRT_PATH"
-          [ ! -d "bin" ] && mkdir -p bin
+          
+          # 🔥 预防性清理
+          [ -e "bin" ] && rm -rf bin 2>/dev/null || true
+          
           echo "════════════════════════════════════════════════════════════════"
           echo "📝 Configuration Loading & Customization"
           echo "════════════════════════════════════════════════════════════════"
