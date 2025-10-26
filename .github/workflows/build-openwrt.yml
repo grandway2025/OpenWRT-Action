@@ -479,69 +479,111 @@ jobs:
             echo "FORCE_UNSAFE_CONFIGURE=1"
           } >> $GITHUB_ENV
       
+            # ============================================
+      # 10. 📝 配置加载与应用
       # ============================================
-      # 10. 自定义配置及插件开关
-      # ============================================
-      - name: 🎨 Apply Custom Configuration
+      - name: 📝 Load Configuration & Apply Customization
         env:
           LAN: ${{ github.event.inputs.lan_addr }}
           ROOT_PASSWORD: ${{ github.event.inputs.root_password }}
           ENABLE_DOCKER: ${{ github.event.inputs.docker == 'true' && 'y' || 'n' }}
           ENABLE_SSRP: ${{ github.event.inputs.ssrp == 'true' && 'y' || 'n' }}
           ENABLE_PASSWALL: ${{ github.event.inputs.passwall == 'true' && 'y' || 'n' }}
-          ENABLE_NIKKI: ${{ github.event.inputs.nikki == 'true' && 'y' || 'n' }}
           ENABLE_OPENCLASH: ${{ github.event.inputs.openclash == 'true' && 'y' || 'n' }}
           ENABLE_LUCKY: ${{ github.event.inputs.lucky == 'true' && 'y' || 'n' }}
           ENABLE_OAF: ${{ github.event.inputs.oaf == 'true' && 'y' || 'n' }}
+          BUILD_FAST: ${{ github.event.inputs.enable_prebuilt_toolchain == 'true' && 'y' || 'n' }}
+          ENABLE_PREBUILT_TOOLCHAIN: ${{ github.event.inputs.enable_prebuilt_toolchain == 'true' && 'y' || 'n' }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CURRENT_DATE: ${{ env.CURRENT_DATE }}
         run: |
           cd "$OPENWRT_PATH"
           
-          # 复制自定义文件
-          if [ -d "$GITHUB_WORKSPACE/files" ]; then
-            mv $GITHUB_WORKSPACE/files $OPENWRT_PATH/files
-          fi
+          echo "════════════════════════════════════════════════════════════════"
+          echo "📝 Configuration Loading & Customization"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
           
-          # 复制配置文件
+          # 1. 复制基础配置
+          echo "📄 Loading base configuration..."
           cp "${{ github.workspace }}/$CONFIG_FILE" .config
+          echo "✅ Base config loaded"
           
-          # 执行自定义脚本
-          if [ -d "${{ github.workspace }}/scripts" ]; then
-            find "${{ github.workspace }}/scripts" -name "*.sh" -exec chmod +x {} \;
+          # 2. 复制自定义文件
+          if [ -d "$GITHUB_WORKSPACE/files" ]; then
+            echo ""
+            echo "📁 Copying custom files..."
+            cp -r "$GITHUB_WORKSPACE/files" .
+            echo "✅ Custom files copied"
           fi
+          
+          # 3. 加载预编译工具链（如果启用）
+          if [ "${{ github.event.inputs.enable_prebuilt_toolchain }}" = "true" ]; then
+            echo ""
+            echo "🔧 Loading prebuilt toolchain..."
+            chmod +x "${{ github.workspace }}/scripts/load-toolchain.sh"
+            if "${{ github.workspace }}/scripts/load-toolchain.sh"; then
+              echo "✅ Toolchain loader completed"
+            else
+              echo "⚠️  Toolchain loader finished (may build from source)"
+            fi
+          fi
+          
+          # 4. 执行自定义脚本
+          echo ""
+          echo "🎨 Running customization scripts..."
+          chmod +x -R "${{ github.workspace }}/scripts"
+          
           if [ -f "${{ github.workspace }}/$DIY_SCRIPT" ]; then
-            chmod +x "${{ github.workspace }}/$DIY_SCRIPT"
-            "${{ github.workspace }}/$DIY_SCRIPT"
+            echo "  ├─ $DIY_SCRIPT"
+            "${{ github.workspace }}/$DIY_SCRIPT" || exit 1
           fi
           
-          # 执行额外脚本（错误不中断）
-          "${{ github.workspace }}/scripts/preset-mihimo-core.sh" "$CLASH_KERNEL" 2>/dev/null || true
-          "${{ github.workspace }}/scripts/preset-adguard-core.sh" "$CLASH_KERNEL" 2>/dev/null || true
+          for script in preset-mihomo-core.sh preset-adguard-core.sh; do
+            if [ -f "${{ github.workspace }}/scripts/$script" ]; then
+              echo "  ├─ $script"
+              "${{ github.workspace }}/scripts/$script" "$CLASH_KERNEL" || exit 1
+            fi
+          done
           
-          # 生成配置
-          echo "⚙️ Generating defconfig..."
-          make defconfig
+          echo "  └─ ✅ All scripts completed"
           
-          # 提取目标信息
+          # 5. 生成最终配置（仅一次 defconfig）
+          echo ""
+          echo "⚙️ Generating final configuration..."
+          if make defconfig V=s; then
+            echo "✅ Configuration generated successfully"
+          else
+            echo "❌ Configuration generation failed"
+            exit 1
+          fi
+          
+          # 6. 提取配置信息
+          echo ""
+          echo "📋 Extracting build information..."
           DEVICE_TARGET=$(awk -F'"' '/^CONFIG_TARGET_BOARD=/{print $2}' .config || echo "x86")
           DEVICE_SUBTARGET=$(awk -F'"' '/^CONFIG_TARGET_SUBTARGET=/{print $2}' .config || echo "64")
+          PKG_COUNT=$(grep -c "^CONFIG_PACKAGE_.*=y" .config || echo 0)
           
           {
             echo "DEVICE_TARGET=$DEVICE_TARGET"
             echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET"
           } >> $GITHUB_ENV
           
-          # 获取最新版本
-          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/openwrt/openwrt/releases/latest" | \
-            grep -m1 '"tag_name"' | cut -d'"' -f4 | sed 's/^v//' || echo "unknown")
-          echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
-          
-          # 显示配置信息
-          echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
-          echo "📌 Latest Release: $LATEST_RELEASE"
-          
-          echo "📦 Plugin Status:"
+          # 7. 配置总结
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo "✅ Configuration Summary"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "📱 Target: $DEVICE_TARGET / $DEVICE_SUBTARGET"
+          echo "🌐 LAN: $LAN"
+          echo "📦 Packages: $PKG_COUNT"
+          echo "🔧 Toolchain: ${{ env.TOOLCHAIN_READY == 'true' && 'Prebuilt' || 'Build from source' }}"
+          echo ""
+          echo "📦 Plugins:"
           echo "  Docker: $ENABLE_DOCKER | SSRP: $ENABLE_SSRP | Passwall: $ENABLE_PASSWALL"
-          echo "  OpenClash: $ENABLE_OPENCLASH | Nikki: $ENABLE_NIKKI | Lucky: $ENABLE_LUCKY | OAF: $ENABLE_OAF"
+          echo "  OpenClash: $ENABLE_OPENCLASH | Lucky: $ENABLE_LUCKY | OAF: $ENABLE_OAF"
+          echo "════════════════════════════════════════════════════════════════"
       
       # ============================================
       # 11. 强制清理（保留关键缓存）
