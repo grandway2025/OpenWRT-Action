@@ -118,12 +118,46 @@ for VER in "${VERSIONS[@]}"; do
     
     # 解压工具链
     echo -e "${YELLOW_COLOR}   📦 Extracting toolchain...${RES}"
+    
+    # 🔥 在解压前强制删除 bin 目录
+    if [ -e "bin" ]; then
+        echo -e "${YELLOW_COLOR}   ⚠️  Removing existing 'bin' directory...${RES}"
+        rm -rf bin 2>/dev/null || {
+            chmod -R 777 bin 2>/dev/null
+            rm -rf bin
+        }
+    fi
+    
+    # 验证 bin 已删除
+    if [ -e "bin" ]; then
+        echo -e "${RED_COLOR}   ❌ Failed to remove 'bin' directory${RES}"
+        ls -la bin
+        exit 1
+    fi
+    
+    # 解压工具链
     if tar -I "zstd -d -T0" -xf toolchain.tar.zst 2>&1 | grep -v "Ignoring unknown" || true; then
         rm -f toolchain.tar.zst
         
         # 更新时间戳
         echo -e "${YELLOW_COLOR}   🔧 Processing files...${RES}"
-        mkdir -p bin
+        
+        # 🔥 创建 bin 目录（现在肯定不存在了）
+        mkdir -p bin || {
+            echo -e "${RED_COLOR}   ❌ Failed to create 'bin' directory${RES}"
+            exit 1
+        }
+        
+        # 验证 bin 目录
+        if [ ! -d "bin" ] || [ ! -w "bin" ]; then
+            echo -e "${RED_COLOR}   ❌ 'bin' directory is not ready${RES}"
+            ls -la bin 2>/dev/null || echo "'bin' does not exist"
+            exit 1
+        fi
+        
+        echo -e "${GREEN_COLOR}   ✅ 'bin' directory created successfully${RES}"
+        
+        # 更新时间戳
         find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
         find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
         
