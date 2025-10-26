@@ -421,19 +421,34 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           
-          # 🔥 预防性清理
-          [ -e "bin" ] && rm -rf bin 2>/dev/null || true
-          
           echo "════════════════════════════════════════════════════════════════"
           echo "📝 Configuration Loading & Customization"
           echo "════════════════════════════════════════════════════════════════"
           echo ""
           
-          # 再次验证 bin 目录
-          if [ ! -d "bin" ] || [ ! -w "bin" ]; then
-            rm -rf bin 2>/dev/null
-            mkdir -p bin
+          # ============================================
+          # 🔥 强制修复 bin 目录（最高优先级）
+          # ============================================
+          echo "🔧 Pre-flight check: Fixing bin directory..."
+          
+          # 完全删除 bin（无论是什么）
+          if [ -e "bin" ]; then
+            echo "⚠️  Found existing 'bin', removing..."
+            rm -rf bin 2>/dev/null || {
+              chmod -R 777 bin 2>/dev/null
+              rm -rf bin
+            }
           fi
+          
+          # 确保 bin 不存在
+          if [ -e "bin" ]; then
+            echo "❌ Failed to remove 'bin'"
+            ls -la bin
+            exit 1
+          fi
+          
+          echo "✅ 'bin' directory cleaned"
+          echo ""
           
           # 1. 复制基础配置
           echo "📄 Loading base configuration..."
