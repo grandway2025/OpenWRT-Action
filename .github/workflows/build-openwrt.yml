@@ -415,7 +415,6 @@ jobs:
           ENABLE_LUCKY: ${{ github.event.inputs.lucky == 'true' && 'y' || 'n' }}
           ENABLE_OAF: ${{ github.event.inputs.oaf == 'true' && 'y' || 'n' }}
           BUILD_FAST: ${{ github.event.inputs.build_fast == 'true' && 'y' || 'n' }} 
-          ENABLE_PREBUILT_TOOLCHAIN: ${{ github.event.inputs.build_fast == 'true' && 'y' || 'n' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CURRENT_DATE: ${{ env.BUILD_DATE }}
         run: |
