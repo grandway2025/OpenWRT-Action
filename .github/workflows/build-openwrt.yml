@@ -373,10 +373,9 @@ jobs:
           mkdir -p "$CCACHE_DIR"
 
           # 更新时间戳
-          echo "🔧 Processing files..."
+          rm -rf bin 2>/dev/null || true
           mkdir -p bin
-          find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
-          find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
+          chmod 755 bin
           
           # 🔥 使用配置文件代替多次命令行调用
           cat > "$CCACHE_DIR/ccache.conf" <<EOF
