@@ -505,7 +505,6 @@ jobs:
           echo "📱 Target: $DEVICE_TARGET-$DEVICE_SUBTARGET"
           echo "📌 Latest Release: $LATEST_RELEASE"
           echo "🌐 LAN: $LAN"
-          echo "📦 Packages: $PKG_COUNT"
           echo "🔧 Toolchain: ${TOOLCHAIN_MODE:-unknown}"
           echo ""
           echo "📦 Plugins:"
