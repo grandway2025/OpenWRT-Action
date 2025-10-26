@@ -536,7 +536,7 @@ EOF
 
 # Toolchain Cache
 if [ "$BUILD_FAST" = "y" ]; then
-    TOOLCHAIN_URL=https://github.com/sbwml/openwrt_caches/releases/download/openwrt-24.10
+    TOOLCHAIN_URL=https://github.com/grandway2025/OpenWRT-Action/releases/download/openwrt-24.10
     curl -L ${TOOLCHAIN_URL}/toolchain_musl_x86_64_gcc-15.tar.zst -o toolchain.tar.zst $CURL_BAR
     echo -e "\n${GREEN_COLOR}Process Toolchain ...${RES}"
     tar -I "zstd" -xf toolchain.tar.zst
