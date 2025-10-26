@@ -463,10 +463,6 @@ jobs:
             echo "✅ Custom files copied"
           fi
           
-          # 更新时间戳
-          echo "🔧 Processing files..."
-          mkdir -p bin
-          
           # 3. 🔥 加载预编译工具链（独立脚本）
           echo ""
           echo "🔧 Loading prebuilt toolchain..."
