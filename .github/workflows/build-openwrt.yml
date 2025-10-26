@@ -444,39 +444,6 @@ jobs:
           fi
           
           # ============================================
-          # 3. 🔥 加载预编译工具链（如果启用）
-          # ============================================
-          if [ "${{ github.event.inputs.build_fast }}" = "true" ]; then
-            echo ""
-            echo "🔧 Loading prebuilt toolchain..."
-            
-            # 确保脚本可执行
-            chmod +x "${{ github.workspace }}/scripts/diy-toolchain.sh"
-            
-            # 执行工具链脚本
-            if "${{ github.workspace }}/scripts/diy-toolchain.sh"; then
-              echo "✅ Toolchain script completed"
-              
-              # 检查是否成功加载
-              if [ "$TOOLCHAIN_READY" = "true" ]; then
-                echo "TOOLCHAIN_READY=true" >> $GITHUB_ENV
-                echo "TOOLCHAIN_MODE=prebuilt" >> $GITHUB_ENV
-                echo "⚡ Using prebuilt toolchain - Expected time: ~45-60 minutes"
-              else
-                echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
-                echo "⛏️  Building toolchain from source - Expected time: ~70-90 minutes"
-              fi
-            else
-              echo "⚠️  Toolchain script finished with warnings"
-              echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
-            fi
-          else
-            echo ""
-            echo "ℹ️  Prebuilt toolchain disabled"
-            echo "TOOLCHAIN_MODE=source" >> $GITHUB_ENV
-          fi
-          
-          # ============================================
           # 4. 执行自定义脚本
           # ============================================
           echo ""
