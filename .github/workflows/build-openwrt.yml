@@ -373,13 +373,9 @@ jobs:
           mkdir -p "$CCACHE_DIR"
 
           # 强制删除 bin
-          [ -e "bin" ] && rm -rf bin
+          rm -rf bin 2>/dev/null || true
           mkdir -p bin
-    
-          # 修复权限
-          for dir in staging_dir build_dir tmp dl feeds .ccache; do
-          [ -d "$dir" ] && chmod -R u+w "$dir" 2>/dev/null || true
-          done
+          chmod 755 bin
           
           # 🔥 使用配置文件代替多次命令行调用
           cat > "$CCACHE_DIR/ccache.conf" <<EOF
@@ -429,7 +425,7 @@ jobs:
           CURRENT_DATE: ${{ env.CURRENT_DATE }}
         run: |
           cd "$OPENWRT_PATH"
-          
+          [ ! -d "bin" ] && mkdir -p bin
           echo "════════════════════════════════════════════════════════════════"
           echo "📝 Configuration Loading & Customization"
           echo "════════════════════════════════════════════════════════════════"
