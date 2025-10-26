@@ -487,9 +487,6 @@ src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.
 src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/telephony
 EOF
 
-# fix_rust_compile_error &&S et Rust build arg llvm.download-ci-llvm to false.
-sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
-
 # Vermagic
 # curl -s https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-24.10.1-x86-64.manifest \
 # | grep "^kernel -" \
@@ -507,6 +504,18 @@ sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' 
 #    find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1
 #    find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1
 #fi
+
+# Toolchain Cache
+fi
+    TOOLCHAIN_URL=https://github.com/sbwml/openwrt_caches/releases/download/openwrt-24.10
+    curl -L ${TOOLCHAIN_URL}/toolchain_musl_x86_64_gcc-15.tar.zst -o toolchain.tar.zst $CURL_BAR
+    echo -e "\n${GREEN_COLOR}Process Toolchain ...${RES}"
+    tar -I "zstd" -xf toolchain.tar.zst
+    rm -f toolchain.tar.zst
+    mkdir bin
+    find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1
+    find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1
+fi
 
 # init openwrt config
 rm -rf tmp/*
