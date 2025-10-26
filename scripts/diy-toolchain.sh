@@ -120,29 +120,12 @@ for VER in "${VERSIONS[@]}"; do
     echo -e "${YELLOW_COLOR}   📦 Extracting toolchain...${RES}"
     if tar -I "zstd -d -T0" -xf toolchain.tar.zst 2>&1 | grep -v "Ignoring unknown" || true; then
         rm -f toolchain.tar.zst
-    
+        
         # 更新时间戳
         echo -e "${YELLOW_COLOR}   🔧 Processing files...${RES}"
-    
-        # 🔥 安全创建 bin 目录
-        if [ -e "bin" ]; then
-            if [ ! -d "bin" ]; then
-                echo -e "${RED_COLOR}   ⚠️  'bin' exists but is not a directory, fixing...${RES}"
-                rm -f bin
-                mkdir -p bin
-            elif [ ! -w "bin" ]; then
-                echo -e "${YELLOW_COLOR}   ⚠️  'bin' not writable, fixing permissions...${RES}"
-                chmod u+w bin
-            else
-                echo -e "${GREEN_COLOR}   ✅ 'bin' directory OK${RES}"
-            fi
-        else
-            mkdir -p bin
-        fi
-    
-    # 更新时间戳
-    find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
-    find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
+        mkdir -p bin
+        find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
+        find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
         
         # 验证工具链
         TOOLCHAIN_DIR=$(find staging_dir -maxdepth 1 -type d -name "toolchain-*" 2>/dev/null | head -1)
