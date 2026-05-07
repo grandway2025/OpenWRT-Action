@@ -20,6 +20,9 @@ export github="github.com"
 # 使用 O2 级别的优化
 sed -i 's/Os/O2/g' include/target.mk
 
+sed -i 's/download-ci-llvm = true/download-ci-llvm = false/g' ~/openwrt/build_dir/target-x86_64_musl/host/rustc-1.90.0-src/bootstrap.toml
+sed -i "s/--set=llvm.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/g" ~/openwrt/build_dir/target-x86_64_musl/host/rustc-1.90.0-src/bootstrap.toml
+
 # 内核版本设置
 curl -s $mirror/doc/kernel-6.6 > include/kernel-6.6
 curl -s $mirror/doc/patch/kernel-6.6/kernel/0001-linux-module-video.patch > package/0001-linux-module-video.patch
