@@ -236,16 +236,16 @@ curl -s $mirror/doc/patch/firewall4/nftables/0002-nftables-add-brcm-fullconenat-
 curl -s $mirror/doc/patch/firewall4/nftables/0003-drop-rej-file.patch > package/network/utils/nftables/patches/0003-drop-rej-file.patch
 
 # FullCone module
-git clone https://$gitea/nft-fullcone package/new/nft-fullcone --depth=1
+git clone https://$github/grandway2025/nft-fullcone package/new/nft-fullcone
 
 # IPv6 NAT
-git clone https://$gitea/package_new_nat6 package/new/nat6 --depth=1
+git clone https://$github/grandway2025/package_new_nat6 package/new/nat6
 
 # natflow
-git clone https://$gitea/package_new_natflow package/new/natflow --depth=1
+git clone https://$github/grandway2025/package_new_natflow package/new/natflow
 
 # sfe
-git clone https://$github/zhiern/shortcut-fe package/new/shortcut-fe --depth=1
+git clone https://$github/grandway2025/shortcut-fe package/new/shortcut-fe
 
 # Patch Luci add nft_fullcone/bcm_fullcone & shortcut-fe & natflow & ipv6-nat & custom nft command option
 pushd feeds/luci
@@ -290,8 +290,8 @@ sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/ut
 
 # UPnP
 rm -rf feeds/{packages/net/miniupnpd,luci/applications/luci-app-upnp}
-git clone https://$gitea/miniupnpd feeds/packages/net/miniupnpd -b v2.3.9 --depth=1
-git clone https://$gitea/luci-app-upnp feeds/luci/applications/luci-app-upnp -b openwrt-24.10 --depth=1
+git clone https://$github/grandway2025/miniupnpd feeds/packages/net/miniupnpd
+git clone https://$github/grandway2025/luci-app-upnp feeds/luci/applications/luci-app-upnp
 
 # profile
 sed -i 's#\\u@\\h:\\w\\\$#\\[\\e[32;1m\\][\\u@\\h\\[\\e[0m\\] \\[\\033[01;34m\\]\\W\\[\\033[00m\\]\\[\\e[32;1m\\]]\\[\\e[0m\\]\\\$#g' package/base-files/files/etc/profile
