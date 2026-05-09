@@ -70,6 +70,9 @@ sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
 sed -i '/CONFIG_BUILDBOT/d' include/feeds.mk
 sed -i 's/;)\s*\\/; \\/' include/feeds.mk
 
+# 修复zabbix
+sed -i 's/libnetsnmp-ssl/libnetsnmp/g' package/feeds/packages/zabbix/Makefile
+
 # nginx - latest version
 rm -rf feeds/packages/net/nginx
 git clone https://$github/sbwml/feeds_packages_net_nginx feeds/packages/net/nginx -b openwrt-24.10
@@ -424,7 +427,7 @@ rm -rf feeds/luci/applications/luci-app-sqm
 sed -i 's/syslog/none/g' feeds/packages/admin/netdata/files/netdata.conf
 
 # caddy
-git clone https://git.kejizero.online/zhao/luci-app-caddy package/new/caddy --depth=1
+git clone https://$github/grandway2025/luci-app-caddy package/new/caddy --depth=1
 
 # Mosdns
 git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns --depth=1
