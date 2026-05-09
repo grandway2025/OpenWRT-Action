@@ -63,6 +63,9 @@ sed -i 's,-SNAPSHOT,,g' package/base-files/image-config.in
 sed -i '/CONFIG_BUILDBOT/d' include/feeds.mk
 sed -i 's/;)\s*\\/; \\/' include/feeds.mk
 
+# 修复zabbix
+sed -i 's/libnetsnmp-ssl/libnetsnmp/g' package/feeds/packages/zabbix/Makefile
+
 # nginx - latest version
 rm -rf feeds/packages/net/nginx
 git clone https://$github//sbwml/feeds_packages_net_nginx -b openwrt-24.10 feeds/packages/net/nginx
