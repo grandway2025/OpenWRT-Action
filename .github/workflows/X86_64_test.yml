@@ -98,25 +98,25 @@ jobs:
 
     - name: Install Caddy Server
       run: |
-        sudo curl -sL -o /usr/bin/caddy https://github.com/zhiern/ZeroWrt-Action/releases/download/Caddy/caddy
+        sudo curl -sL -o /usr/bin/caddy https://github.com/sbwml/r4s_build_script/releases/download/caddy/caddy
         sudo chmod 755 /usr/bin/caddy
         echo ":8080 {" > caddyfile
-        echo "    root * $(pwd)" >> caddyfile
+        echo "    root * $(pwd)/r4s_build_script" >> caddyfile
         echo "    file_server browse" >> caddyfile
         echo "}" >> caddyfile
         sudo /usr/bin/caddy start --config caddyfile --adapter caddyfile
         
     - name: Free disk space
-      uses: zhiern/actions@free-disk
+      uses: sbwml/actions@free-disk
 
     - name: Checkout
       uses: actions/checkout@main
 
     - name: Build System Setup
-      uses: zhiern/actions@openwrt-build-setup
+      uses: sbwml/actions@openwrt-build-setup
 
     - name: Install LLVM
-      uses: zhiern/actions@install-llvm
+      uses: sbwml/actions@install-llvm
                 
     - name: Clone Source Code
       run: |
