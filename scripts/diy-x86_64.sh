@@ -433,7 +433,7 @@ git clone https://$github/sbwml/luci-app-mosdns -b v5 package/new/mosdns --depth
 git clone https://$github/destan19/OpenAppFilter package/new/OpenAppFilter --depth=1
 
 # adguardhome
-git clone https://$gitea/luci-app-adguardhome package/new/luci-app-adguardhome --depth=1
+git clone https://$github/grandway2025/luci-app-adguardhome package/new/luci-app-adguardhome --depth=1
 
 # PowerOff 关机插件
 git clone https://github.com/sirpdboy/luci-app-poweroffdevice package/new/poweroff --depth=1
@@ -480,7 +480,7 @@ git clone https://$github/sbwml/openwrt_pkgs package/new/custom --depth=1
 rm -rf package/new/custom/luci-app-adguardhome
 
 # autocore-arm
-git clone https://$gitea/autocore-arm package/new/autocore-arm --depth=1
+git clone https://$github/grandway2025/autocore-arm package/new/autocore-arm --depth=1
 
 sed -i 's/O2/O2 -march=x86-64-v2/g' include/target.mk
 
