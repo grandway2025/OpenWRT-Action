@@ -329,26 +329,6 @@ jobs:
             builddir-${{ env.SOURCE_KEY }}-${{ env.PLUGINS_HASH }}-
             builddir-${{ env.SOURCE_KEY }}-
       
-      - name: Fix and Patch Feeds
-        working-directory: openwrt  # <--- 关键点：进入源码目录执行
-        run: |
-          # 1. 更新 feeds 获取原始文件
-          ./scripts/feeds update -a
-          # 2. 修复 python-pika (手动移除不存在的 python-setuptools/host)
-          if [ -f feeds/packages/lang/python/python-pika/Makefile ]; then
-            sed -i 's/python-setuptools\/host/python3-setuptools\/host/g' feeds/packages/lang/python/python-pika/Makefile
-            sed -i 's/python-pika/python3-pika/g' feeds/packages/lang/python/python-pika/Makefile
-          fi
-          # 3. 补齐 onionshare-cli 缺失的依赖
-          mkdir -p feeds/packages/lang/python/python-unidecode
-          curl -sL https://raw.githubusercontent.com/openwrt/packages/master/lang/python/python-unidecode/Makefile > feeds/packages/lang/python/python-unidecode/Makefile
-          
-          mkdir -p feeds/packages/lang/python/python-pysocks
-          curl -sL https://raw.githubusercontent.com/openwrt/packages/master/lang/python/python-pysocks/Makefile > feeds/packages/lang/python/python-pysocks/Makefile
-          # 4. 修复 zabbix 报错
-          find feeds/packages/admin/zabbix/ -name Makefile -exec sed -i 's/libnetsnmp-ssl/libnetsnmp/g' {} + || true
-          # 5. 安装所有包
-          ./scripts/feeds install -a
       # ============================================
       # 7. Feeds 配置（优化版 - 简化输出）
       # ============================================
