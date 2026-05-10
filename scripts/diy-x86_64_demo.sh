@@ -541,5 +541,29 @@ if [ "$BUILD_FAST" = "y" ]; then
     find ./tmp/ -name '*' -exec touch {} \; >/dev/null 2>&1
 fi
 
+# 1. 彻底更新 feeds
+          ./scripts/feeds update -a
+          # 2. 强制修复 python-pika 的依赖错误
+          # 注意：新版 OpenWrt 不需要 python3-setuptools/host，直接删掉这个错误的依赖即可
+          if [ -f feeds/packages/lang/python/python-pika/Makefile ]; then
+            sed -i 's/python3-setuptools\/host//g' feeds/packages/lang/python/python-pika/Makefile
+            sed -i 's/python-setuptools\/host//g' feeds/packages/lang/python/python-pika/Makefile
+          fi
+          # 3. 修复 onionshare-cli 找不到依赖的问题
+          # 如果你不需要这个包，最简单的办法是直接删除它，防止它卡住编译
+          rm -rf feeds/packages/net/onionshare-cli
+          # 4. 修复缺失的 luci-lib-docker 和 mjpg-streamer
+          # 这种情况通常是 feed 定义没同步，我们强制重新安装 luci 和 packages feed
+          ./scripts/feeds install -a -p luci
+          ./scripts/feeds install -a -p packages
+          # 5. 针对性补齐补丁 (针对 python3-unidecode 等)
+          mkdir -p package/community-fix
+          pushd package/community-fix
+          # 只有当这些包真的不存在时才拉取
+          [ ! -d "python-unidecode" ] && git clone --depth 1 https://github.com/openwrt/packages.git -b master temp_pkg && mv temp_pkg/lang/python/python-unidecode . && rm -rf temp_pkg
+          popd
+          # 6. 最后执行一次全安装，确保所有索引刷新
+          ./scripts/feeds install -a
+          
 # init openwrt config
 rm -rf tmp/*
