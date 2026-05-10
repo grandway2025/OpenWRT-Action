@@ -489,6 +489,9 @@ src/gz openwrt_packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24
 src/gz openwrt_routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/routing
 src/gz openwrt_telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/24.10.2/packages/x86_64/telephony
 EOF
-         
+
+./scripts/feeds update -a
+./scripts/feeds install -a
+
 # init openwrt config
 rm -rf tmp/*
