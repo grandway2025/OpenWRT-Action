@@ -330,30 +330,25 @@ jobs:
             builddir-${{ env.SOURCE_KEY }}-
       
       - name: Fix and Patch Feeds
+        working-directory: openwrt  # <--- 关键点：进入源码目录执行
         run: |
           # 1. 更新 feeds 获取原始文件
           ./scripts/feeds update -a
           # 2. 修复 python-pika (手动移除不存在的 python-setuptools/host)
-          # 使用 sed 强行将旧的 build dependency 替换为现代 python3 模式
           if [ -f feeds/packages/lang/python/python-pika/Makefile ]; then
             sed -i 's/python-setuptools\/host/python3-setuptools\/host/g' feeds/packages/lang/python/python-pika/Makefile
             sed -i 's/python-pika/python3-pika/g' feeds/packages/lang/python/python-pika/Makefile
           fi
-          # 3. 补齐 onionshare-cli 缺失的依赖：python-unidecode 和 python-pysocks
-          # 我们直接从官方 packages 仓库拉取这两个包的最新定义
+          # 3. 补齐 onionshare-cli 缺失的依赖
           mkdir -p feeds/packages/lang/python/python-unidecode
           curl -sL https://raw.githubusercontent.com/openwrt/packages/master/lang/python/python-unidecode/Makefile > feeds/packages/lang/python/python-unidecode/Makefile
           
           mkdir -p feeds/packages/lang/python/python-pysocks
           curl -sL https://raw.githubusercontent.com/openwrt/packages/master/lang/python/python-pysocks/Makefile > feeds/packages/lang/python/python-pysocks/Makefile
-          # 4. 修复 zabbix 报错 (libnetsnmp-ssl 找不到的问题)
-          # 很多时候是因为名称变更为 libnetsnmp
-          find feeds/packages/admin/zabbix/ -name Makefile -exec sed -i 's/libnetsnmp-ssl/libnetsnmp/g' {} +
-          # 5. 强行安装所有包并强制覆盖
-          ./scripts/feeds install -f -a
-          # 6. 验证关键包是否存在
-          [ -d "feeds/packages/lang/python/python-unidecode" ] && echo "Unidecode fixed"
-          [ -d "feeds/packages/lang/python/python-pysocks" ] && echo "PySocks fixed"
+          # 4. 修复 zabbix 报错
+          find feeds/packages/admin/zabbix/ -name Makefile -exec sed -i 's/libnetsnmp-ssl/libnetsnmp/g' {} + || true
+          # 5. 安装所有包
+          ./scripts/feeds install -a
       # ============================================
       # 7. Feeds 配置（优化版 - 简化输出）
       # ============================================
