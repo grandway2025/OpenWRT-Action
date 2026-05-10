@@ -1,4 +1,4 @@
-# 添加其他仓库的插件 然后去config里添加上对应的插件名
+# 添加其他仓库的插件 然后去config里添加上对应的插件名 https://github.com/CC13594759/OpenWrt-Actions
 
 # 修改默认IP
 sed -i 's/192.168.1.1/192.168.12.12/g' package/base-files/files/bin/config_generate
